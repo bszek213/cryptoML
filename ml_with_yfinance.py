@@ -128,7 +128,7 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     direct = os.getcwd()
     name = crypt + '.png'
     direct = os.getcwd()
-    check_folder = os.path.join(direct,'graphs_yf',crypt)
+    check_folder = os.path.join(direct,'forecast_ML',crypt)
     if os.path.exists(check_folder):
         final_dir = os.path.join(check_folder, name)
     else:
@@ -175,7 +175,7 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     direct = os.getcwd()
     name = crypt + '_MACD.png'
     direct = os.getcwd()
-    check_folder = os.path.join(direct,'graphs_yf',crypt)
+    check_folder = os.path.join(direct,'forecast_ML',crypt)
     if os.path.exists(check_folder):
         final_dir = os.path.join(check_folder, name)
     else:
@@ -196,7 +196,7 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     plt.title(title_name)
     #make and check directories
     name = crypt + 'zoom' +'.png'
-    check_folder = os.path.join(direct,'graphs_yf',crypt)
+    check_folder = os.path.join(direct,'forecast_ML',crypt)
     if os.path.exists(check_folder):
         final_dir = os.path.join(check_folder, name)
     else:
@@ -241,7 +241,7 @@ def model_tuning(df,crypt):
     plt.legend()
     direct = os.getcwd()
     name = 'test_train_data_'+crypt + '.png'
-    check_folder = os.path.join(direct,'graphs_yf',crypt)
+    check_folder = os.path.join(direct,'forecast_ML',crypt)
     if os.path.exists(check_folder):
         final_dir = os.path.join(check_folder, name)
     else:
@@ -369,7 +369,7 @@ def main():
             data = set_data(crypt)
             df_data = convert_to_panda(data)
             file_name = crypt  + '_tuning_results.csv'
-            final_dir = os.path.join(os.getcwd(),'graphs_yf',crypt, file_name)
+            final_dir = os.path.join(os.getcwd(),'forecast_ML',crypt, file_name)
             if os.path.exists(final_dir):
                 print('use parameters from file')
                 change, season, error, season_mode, holiday = read_params(final_dir)

@@ -15,11 +15,11 @@ from pykrakenapi import KrakenAPI
 from numpy import array, zeros, nan, arange, percentile, empty
 from time import sleep
 import argparse
-from os import path, getcwd, listdir, remove
+from os import path, getcwd, listdir, remove, mkdir
 from pandas import DataFrame, read_csv, date_range
 from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
-from os.path import join
+from os.path import join, exists
 import warnings
 import buy_sell_signals
 from datetime import datetime, timedelta
@@ -462,7 +462,7 @@ def buy_find(inst_data,name):
     ax[4].grid(True)
     save_name = name + '.svg'
     direct = getcwd()
-    final_dir = join(direct, 'lin_regress_plots', save_name)
+    final_dir = join(direct, 'technical_analysis', save_name)
     plt.tight_layout()
     plt.savefig(final_dir,dpi=300)
     plt.close()
@@ -600,6 +600,10 @@ def track_sell(name):#,buy_init
 def main():
     args =  input_arg()
     while True:
+        if exists(join(getcwd(),'technical_analysis')):
+            print('technical analysis folder already exists')
+        else:
+            mkdir(join(getcwd(),'technical_analysis'))
         positive_cryptos = []
         crypto_beta = []
         r_val = []
@@ -691,11 +695,11 @@ def main():
         print('=================================================')
         #delete old plots
         direct = getcwd()
-        final_dir = join(direct, 'lin_regress_plots')
+        final_dir = join(direct, 'technical_analysis')
         for f in listdir(final_dir):
             remove(join(final_dir, f))
         #plot function#
-        file_loc = path.join(getcwd(), "lin_regress_plots", "positive_trend.csv")
+        file_loc = path.join(getcwd(), "technical_analysis", "positive_trend.csv")
         crypto_df.to_csv(file_loc)
         bought = False
         buy_crypt = 'place_holder'
@@ -742,7 +746,7 @@ def main():
                 open_pos == False
         while bought == True and open_pos == False:
             direct = getcwd()
-            final_dir = join(direct, 'lin_regress_plots')
+            final_dir = join(direct, 'technical_analysis')
             for f in listdir(final_dir):
                 remove(join(final_dir, f))
             sell_or_not = track_sell(buy_crypt)

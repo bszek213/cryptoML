@@ -16,10 +16,10 @@ python ml_with_yfinance.py
 python check_positive_trend.py -s 1440 -c BTCUSD
 ```
 ### Sample Output from Time Series Forecasting Matrix
-![alt text](https://github.com/bszek213/crypto/blob/ver_0/graphs_yf/GHST/GHST.png)
+![alt text](https://github.com/bszek213/cryptoML/blob/main/forecast_ML/BTC/BTC.png)
 
 ### Sample Output from the Technical Analysis
-![alt text](https://github.com/bszek213/crypto/blob/ver_0/lin_regress_plots/DOTUSD.svg)
+![alt text](https://github.com/bszek213/cryptoML/blob/main/technical_analysis/BTCUSD.svg)
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
