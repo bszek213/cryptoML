@@ -1,0 +1,29 @@
+name: crypto
+channels:
+- conda-forge
+- robostack
+- anaconda
+- intel
+dependencies:
+- hvplot
+- numpy
+- pandas
+- holoviews
+- scikit-learn
+- scipy
+- ipython
+- plotly
+- seaborn
+- ipywidgets
+- ipykernel
+- matplotlib
+- spyder
+- notebook
+- keyboard
+- prophet
+- pip
+- pip:
+  - pykrakenapi
+  - tqdm
+  - yfinance
+
