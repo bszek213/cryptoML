@@ -10,9 +10,9 @@ conda env create -f crypto.yaml
 ## Usage
 
 ```python
-#Time Series Forecasting
+# Time Series Forecasting
 python ml_with_yfinance.py
-#Technical Anlysis
+# Technical Analysis
 python check_positive_trend.py -s 1440 -c BTCUSD
 ```
 ### Sample Output from Time Series Forecasting Matrix
