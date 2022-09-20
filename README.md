@@ -25,6 +25,7 @@ python check_positive_trend.py -s 1440 -c BTCUSD
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 ## Top 10 performing Cryptos
+```bash
   crypto    reg_coef  MACD_cross_buy  MACD_cross_sell
 0    BTC  132.869644           False            False
 1    ETH   17.858826           False            False
@@ -36,3 +37,4 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 7   ATOM    0.611704           False            False
 8   AVAX    0.284228           False            False
 9    LTC    0.166953           False            False
+```
