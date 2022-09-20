@@ -394,6 +394,10 @@ def main():
     if os.path.exists(os.path.join(os.getcwd(),'save_pos_cryptos.csv')) == True:
         os.remove('save_pos_cryptos.csv')
     pos_crypts.to_csv('save_pos_cryptos.csv')
+    #Write top 5 cryptos to readme
+    with open('README.md','a') as f:
+        f.write(str(pos_crypts.drop(columns='Unnamed: 0').head(10)))
+        f.close()
     print(f'current crypto code took {default_timer() - start} seconds')
     # del pos_crypts, names_crypt, crypt_above_zero, int_change, below_zero_list, http, forecast
 if __name__ == "__main__":
