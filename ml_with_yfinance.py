@@ -344,10 +344,10 @@ def tuning(df,train,test,params):
     forecast_test = m.predict(df.iloc[-test:-1]) #CHECK THIS I THINK ITS ALSO COMPARING THE FUTURE PREDICTIONS
     mape_values = mean((abs(df['y'].iloc[-test:-1].values - forecast_test['yhat'].values)
                         / df['y'].iloc[-test:-1].values) * 100)
+    del m, forecast_test
     return mape_values
 
 def main():
-    #TODO: change percent change to a linear regression?
     start = default_timer()
     names_crypt = set_crypt_names()
     # while True:
