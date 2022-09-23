@@ -262,6 +262,7 @@ def model_tuning(df,crypt):
         errorV = tuning(df,train,test,params) #Process(target=(tuning(df,train,test,params)))
         error_list.append(errorV)
         param_list.append(params)
+        del errorV
     # for params in tqdm(all_params):
     #     # with suppress_stdout_stderr():
     #     m = Prophet(**params)
@@ -340,10 +341,14 @@ def read_params(filepath):
 def tuning(df,train,test,params):
     m = Prophet(**params)
     m.add_country_holidays(country_name='US')
-    m.fit(df.iloc[0:train])
-    forecast_test = m.predict(df.iloc[-test:-1]) #CHECK THIS I THINK ITS ALSO COMPARING THE FUTURE PREDICTIONS
-    mape_values = mean((abs(df['y'].iloc[-test:-1].values - forecast_test['yhat'].values)
-                        / df['y'].iloc[-test:-1].values) * 100)
+    m.fit(df)
+    forecast_test = m.predict(df)
+    mape_values = mean((abs(df['y'].values - forecast_test['yhat'].values)
+                        / df['y'].values) * 100)
+    # m.fit(df.iloc[0:train])
+    # forecast_test = m.predict(df.iloc[-test:-1]) #CHECK THIS I THINK ITS ALSO COMPARING THE FUTURE PREDICTIONS
+    # mape_values = mean((abs(df['y'].iloc[-test:-1].values - forecast_test['yhat'].values)
+    #                     / df['y'].iloc[-test:-1].values) * 100)
     del m, forecast_test
     return mape_values
 
