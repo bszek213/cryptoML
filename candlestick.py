@@ -9,20 +9,66 @@ from os import getcwd, path, mkdir
 from pandas import read_csv
 from timeit import default_timer
 import plotly.graph_objects as go
-#TODO: ADD kraken input to the last day, as yfinance day interval will only get the previous days price, not the current day.
+import krakenex
+from pykrakenapi import KrakenAPI
+# def kraken_info():
+#     print('initialize kraken data')
+#     api = krakenex.API()
+#     api.load_key('key.txt')
+#     kraken = KrakenAPI(api)
+#     return kraken
+def get_ohlc(crypt,sample_rate=1440):
+    """
+    Parameters
+    ----------
+    kraken : Kraken object
+        DESCRIPTION.
+    crypt : crypto str name
+        DESCRIPTION.
+    inter : int variable - sampling window
+        time frame interval minutes 1 (default), 5, 15, 30, 60, 240, 1440, 10080, 21600.
+    Returns
+    -------
+    Pandas df 
+        close, high, low prices.
+    """
+    if crypt == "APE3":
+        crypt = "APE"
+    if crypt == "LUNA1":
+        crypt = "LUNA"
+    crypt = crypt + 'USD'
+    api = krakenex.API()
+    api.load_key('key.txt')
+    kraken = KrakenAPI(api)
+    ohlc = None
+    while True:
+        try:
+            ohlc = kraken.get_ohlc_data(crypt, interval = sample_rate, since = 0,
+                                        ascending = True) #returns two years of data7
+        except Exception as e:
+            print(f'getohlc() timed out from internet connection: {e}')
+        if ohlc is not None:
+            break
+    # self.ohlc_no_param = ohlc[0]
+    return ohlc[0]
 def set_data(crypt):
     # crypt_name = sys.argv[1] + '-USD'
     crypt_name = crypt + '-USD'
     temp = yf.Ticker(crypt_name)
     history = temp.history(period = 'max', interval="1d")
-    # data = yf.download(tickers=crypt_name, period = 'max', interval = '1d') #columns = Index(['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
     return history
 def set_crypt_names():
     location = getcwd()
     df = read_csv(path.join(location,'crypto_trade_min.csv'))
     df.sort_values(by=['crypto'],inplace=True)
     return df['crypto']
-def create_candlestick(data,crypt):
+def create_candlestick(crypt,ohlc):
+    # data.loc[ohlc.iloc[-1].name] = [ohlc['open'].iloc[-1],
+    #                                 ohlc['high'].iloc[-1],
+    #                                 ohlc['low'].iloc[-1],
+    #                                 ohlc['close'].iloc[-1],
+    #                                 ohlc['volume'].iloc[-1],
+    #                                 0,0]
     direct = getcwd()
     check_folder = path.join(direct,'candlestick_figures')
     name = crypt + '_candlestick.png'
@@ -31,38 +77,47 @@ def create_candlestick(data,crypt):
     else:
         mkdir(check_folder)
         final_dir = path.join(check_folder, name)
-    fig = go.FigureWidget(go.Candlestick(x=data.index,
-                                         open=data['Open'],
-                                         high=data['High'],
-                                         low=data['Low'],
-                                         close=data['Close']))
+    # fig = go.FigureWidget(go.Candlestick(x=data.index,
+    #                                      open=data['Open'],
+    #                                      high=data['High'],
+    #                                      low=data['Low'],
+    #                                      close=data['Close']))
+    fig = go.FigureWidget(go.Candlestick(x=ohlc.index,
+                                      open=ohlc['open'],
+                                      high=ohlc['high'],
+                                      low=ohlc['low'],
+                                      close=ohlc['close']))
     try:
-        if len(data.index) > 30:
-            start = data.index[-30]
-            end = data.index[-1]
+        if len(ohlc.index) > 30:
+            start = ohlc.index[-30]
+            end = ohlc.index[-1]
             fig.update_xaxes(range=[start, end])
-            start = min(data['Low'].iloc[-30:-1])
-            end = max(data['High'].iloc[-30:-1])
+            start = min(ohlc['low'].iloc[-30::])
+            end = max(ohlc['high'].iloc[-30::])
         else:
-            start = data.index[-15]
-            end = data.index[-1]
+            start = ohlc.index[-10]
+            end = ohlc.index[-1]
             fig.update_xaxes(range=[start, end])
-            start = min(data['Low'].iloc[-15:-1])
-            end = max(data['High'].iloc[-15:-1])
+            start = min(ohlc['low'].iloc[-10::])
+            end = max(ohlc['high'].iloc[-10::])
         fig.update_yaxes(range=[start, end])
-        fig.update_layout(title=crypt,xaxis_rangeslider_visible=False)
+        fig.update_layout(title=crypt,
+                          margin=dict(l=50,r=50,b=100,t=100,pad=4),
+                          xaxis_rangeslider_visible=False)
         fig.write_image(final_dir)
     except:
         print(f'{crypt} candlestick cannot be created')
     
-def analysis_candlestick(data):
+def analysis_candlestick(ohlc):
+    
     pass
 def main():
     start = default_timer()
     names_crypt = set_crypt_names()
     for crypt in names_crypt:
         print(crypt)
-        data = set_data(crypt)
-        create_candlestick(data,crypt)
+        # data = set_data(crypt)
+        ohlc = get_ohlc(crypt)
+        create_candlestick(crypt,ohlc)
 if __name__ == "__main__":
     main()
