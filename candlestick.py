@@ -9,6 +9,7 @@ from os import getcwd, path, mkdir
 from pandas import read_csv
 from timeit import default_timer
 import plotly.graph_objects as go
+#TODO: ADD kraken input to the last day, as yfinance day interval will only get the previous days price, not the current day.
 def set_data(crypt):
     # crypt_name = sys.argv[1] + '-USD'
     crypt_name = crypt + '-USD'
