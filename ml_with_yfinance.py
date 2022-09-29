@@ -24,6 +24,8 @@ from tqdm import tqdm
 # import multiprocessing as mp
 from scipy.signal import savgol_filter
 from urllib3 import PoolManager
+from candlestick import get_ohlc
+from time import sleep
 """
 TODO
 1. ensemble modeling - add arima and other forecasters as a well of getting 
@@ -47,30 +49,43 @@ def convert_to_panda(inst_data):
     df = DataFrame(list(zip(inst_data['Close'],inst_data.index)),columns = ['y', 'ds'])
     return df
 
-def macd(crypto_df_final):
-    crypto_df_final['sma_1'] = crypto_df_final['y'].ewm(span=26,
+def macd(crypto_df_final,crypt):
+    kraken_data = get_ohlc(crypt)
+    kraken_data['sma_1'] = kraken_data['close'].ewm(span=26,
                       min_periods=26-1).mean()
-    crypto_df_final['sma_2'] = crypto_df_final['y'].ewm(span=12,
-                     min_periods=12-1).mean()
-    crypto_df_final['macd_diff'] = crypto_df_final['sma_2'] - crypto_df_final['sma_1']
-    #filter the MACD diff line
-    sav_data =  savgol_filter(crypto_df_final['macd_diff'].dropna().values, 3, 2)
-    an_array = empty(len(crypto_df_final['macd_diff']))
-    an_array[:] = nan
-    an_array[len(crypto_df_final['macd_diff']) - len(sav_data):len(crypto_df_final['macd_diff'])] = sav_data
-    crypto_df_final['macd_diff'] = an_array
-    crypto_df_final['signal_line'] = crypto_df_final['macd_diff'].ewm(span=9,
-                     min_periods=9-1).mean()
-    #Calculate IQR
-    #TODO: calculate a running IQR for better fitting
+    kraken_data['sma_2'] = kraken_data['close'].ewm(span=12,
+                      min_periods=12-1).mean()
+    kraken_data['macd_diff'] = kraken_data['sma_2'] - kraken_data['sma_1']
+    kraken_data['signal_line'] = kraken_data['macd_diff'].ewm(span=9,
+                      min_periods=9-1).mean()
     q75 = zeros(2)
     q25 = zeros(2)
-    q75[0], q25[0] = percentile(crypto_df_final['macd_diff'].iloc[0:int(len(crypto_df_final)/2)].dropna().values, 
+    q75[0], q25[0] = percentile(kraken_data['macd_diff'].iloc[0:int(len(kraken_data)/2)].dropna().values, 
                                 [75 ,25])
-    q75[1], q25[1] = percentile(crypto_df_final['macd_diff'].iloc[int(len(crypto_df_final)/2):-1].values, 
+    q75[1], q25[1] = percentile(kraken_data['macd_diff'].iloc[int(len(kraken_data)/2):-1].values, 
                                 [75 ,25])
+    # crypto_df_final['sma_1'] = crypto_df_final['y'].ewm(span=26,
+    #                   min_periods=26-1).mean()
+    # crypto_df_final['sma_2'] = crypto_df_final['y'].ewm(span=12,
+    #                  min_periods=12-1).mean()
+    # crypto_df_final['macd_diff'] = crypto_df_final['sma_2'] - crypto_df_final['sma_1']
+    # #filter the MACD diff line
+    # sav_data =  savgol_filter(crypto_df_final['macd_diff'].dropna().values, 3, 2)
+    # an_array = empty(len(crypto_df_final['macd_diff']))
+    # an_array[:] = nan
+    # an_array[len(crypto_df_final['macd_diff']) - len(sav_data):len(crypto_df_final['macd_diff'])] = sav_data
+    # crypto_df_final['macd_diff'] = an_array
+    # crypto_df_final['signal_line'] = crypto_df_final['macd_diff'].ewm(span=9,
+    #                  min_periods=9-1).mean()
+    # #Calculate IQR
+    # q75 = zeros(2)
+    # q25 = zeros(2)
+    # q75[0], q25[0] = percentile(crypto_df_final['macd_diff'].iloc[0:int(len(crypto_df_final)/2)].dropna().values, 
+    #                             [75 ,25])
+    # q75[1], q25[1] = percentile(crypto_df_final['macd_diff'].iloc[int(len(crypto_df_final)/2):-1].values, 
+    #                             [75 ,25])
     # q75, q25 = percentile(crypto_df_final['macd_diff'].dropna().values, [75 ,25])
-    return crypto_df_final, q25, q75
+    return kraken_data, q25, q75
 
 def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality_prior_scale, seasonality_mode, holiday):#holidays_prior_scale=10
     mod = Prophet(interval_width=0.95, daily_seasonality=True, 
@@ -86,24 +101,24 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     forecast = final.predict(future)
     #plot the whole figure
     fig2 = final.plot(forecast)
-    inst_data, q25, q75 = macd(inst_data)
+    kraken_data, q25, q75 = macd(inst_data,crypt)
     #check if macd is below the signal line
     # if inst_data['macd_diff'].iloc[-2] < inst_data['signal_line'].iloc[-2]:
     #     below_signal = True
     # else:
     #     below_signal = False
-    if ((inst_data['macd_diff'].iloc[-1] < 0) and 
-        (inst_data['macd_diff'].iloc[-2] < inst_data['signal_line'].iloc[-2]) and
-        (inst_data['macd_diff'].iloc[-1] > inst_data['signal_line'].iloc[-1]) and 
-        (inst_data['macd_diff'].iloc[-1] <= q25[1])):
+    if ((kraken_data['macd_diff'].iloc[-1] < 0) and 
+        (kraken_data['macd_diff'].iloc[-2] < kraken_data['signal_line'].iloc[-2]) and
+        (kraken_data['macd_diff'].iloc[-1] > kraken_data['signal_line'].iloc[-1]) and 
+        (kraken_data['macd_diff'].iloc[-1] <= q25[1])):
         cross_point_buy = True
     else:
         cross_point_buy = False
         
-    if ((inst_data['macd_diff'].iloc[-1] > 0) and 
-        (inst_data['macd_diff'].iloc[-2] > inst_data['signal_line'].iloc[-2]) and
-        (inst_data['macd_diff'].iloc[-1] < inst_data['signal_line'].iloc[-1]) and 
-        (inst_data['macd_diff'].iloc[-1] >= q75[1])):
+    if ((kraken_data['macd_diff'].iloc[-1] > 0) and 
+        (kraken_data['macd_diff'].iloc[-2] > kraken_data['signal_line'].iloc[-2]) and
+        (kraken_data['macd_diff'].iloc[-1] < kraken_data['signal_line'].iloc[-1]) and 
+        (kraken_data['macd_diff'].iloc[-1] >= q75[1])):
         cross_point_sell = True
     else:
         cross_point_sell = False
@@ -118,6 +133,10 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
         reg_arr[i] = (reg.coef_ * i) + reg.intercept_
     reg_arr = [nan if x == 0 else x for x in reg_arr]
     #Plot data
+    inst_data['sma_1'] = inst_data['y'].ewm(span=26,
+                      min_periods=26-1).mean()
+    inst_data['sma_2'] = inst_data['y'].ewm(span=12,
+                      min_periods=12-1).mean()
     plt.plot(inst_data['ds'],inst_data['sma_1'],'r')
     plt.plot(inst_data['ds'],inst_data['sma_2'],'b')
     a = add_changepoints_to_plot(fig2.gca(), mod, forecast)
@@ -139,9 +158,9 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     plt.close()
     #MACD line and regression
     fig, ax = plt.subplots(2,1,figsize=(16, 16), dpi=350) 
-    ax[0].plot(inst_data['ds'],inst_data['macd_diff'],'r',label='MACD')
-    ax[0].plot(inst_data['ds'],inst_data['signal_line'],'b',label='signal')
-    ax[0].hlines(y = 0, xmin=inst_data['ds'].iloc[0], xmax=inst_data['ds'].iloc[-1])
+    ax[0].plot(kraken_data.index,kraken_data['macd_diff'],'r',label='MACD') #old x is inst_data['ds']
+    ax[0].plot(kraken_data.index,kraken_data['signal_line'],'b',label='signal') #old x is inst_data['ds']
+    ax[0].hlines(y = 0, xmin=kraken_data.index[0], xmax=kraken_data.index[-1]) #xmin=inst_data['ds'].iloc[0], xmax=inst_data['ds'].iloc[-1]
     # ax[0].hlines(y = q25[0], xmin=inst_data['ds'].iloc[0], xmax=inst_data['ds'].iloc[-1],label='LowerBound_1st'
     #               ,color='black')
     # ax[0].hlines(y = q75[0], xmin=inst_data['ds'].iloc[0], xmax=inst_data['ds'].iloc[-1],label='UpperBound_1st',
@@ -150,14 +169,14 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     #               ,color='green')
     # ax[0].hlines(y = q75[1], xmin=inst_data['ds'].iloc[0], xmax=inst_data['ds'].iloc[-1],label='UpperBound_2nd',
     #               color='green')
-    ax[0].fill_between(inst_data['ds'], q75[0], q25[0], color='red',
+    ax[0].fill_between(kraken_data.index, q75[0], q25[0], color='red',
                       alpha=0.2,label='IQR range 1st half')
-    ax[0].fill_between(inst_data['ds'], q75[1], q25[1], color='blue',
+    ax[0].fill_between(kraken_data.index, q75[1], q25[1], color='blue',
                       alpha=0.2,label='IQR range 2nd half')
     ax[0].legend()
     ax[0].set_xlabel('TIME')
     ax[0].set_ylabel('MACD Values')
-    title_name= f'MACD | {crypt}'
+    title_name= f'MACD-Kraken Data | {crypt}'
     ax[0].set_title(title_name)
     ax[0].grid(True)
     # fig.set_size_inches(8.5, 8.5)
@@ -215,7 +234,7 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     plt.savefig(final_dir,dpi=300)
     plt.close()
     # save_error = 0
-    return forecast, cross_point_buy, cross_point_sell, reg.coef_[0]
+    return forecast, cross_point_buy, cross_point_sell, reg.coef_[0], error
 
 def model_tuning(df,crypt):
     param_grid = {  
@@ -381,9 +400,9 @@ def main():
             else:
                 change, season, error, season_mode, holiday = model_tuning(df_data,crypt)
                 change, season, error, season_mode, holiday = read_params(final_dir)
-            forecast, cross_point_buy, cross_point_sell, reg_coef = model(df_data, 31, crypt, error, change, season, season_mode, holiday)
+            forecast, cross_point_buy, cross_point_sell, reg_coef, error = model(df_data, 31, crypt, error, change, season, season_mode, holiday)
             #Regress predictions
-            if reg_coef > 0:
+            if reg_coef > 0 and error < 500:
                 # if cross_point == True:# and below_zero == True:
                 crypt_above_zero.append(crypt)
                 int_change.append(reg_coef)

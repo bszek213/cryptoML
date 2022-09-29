@@ -108,9 +108,33 @@ def create_candlestick(crypt,ohlc):
     except:
         print(f'{crypt} candlestick cannot be created')
     
-def analysis_candlestick(ohlc):
+def analysis_candlestick(ohlc,crypt):
+    #Bullish Engulfing
+    engulf_out = bullish_engulf(ohlc)
+    inv_hammer_out = inverted_hammer_bullish(ohlc)
+    if engulf_out == True:
+        print(f'{crypt} bullish as denoted by bullish engulf pattern')
+    elif inv_hammer_out == True:
+        print(f'{crypt} bullish as denoted by bullish inverted hammer bullish pattern')
     
-    pass
+def bullish_engulf(crypto_df):
+    if ((crypto_df['close'].iloc[-1] > crypto_df['open'].iloc[-2]) and
+        (crypto_df['open'].iloc[-1] < crypto_df['close'].iloc[-2])
+        and (crypto_df['high'].iloc[-1] > crypto_df['high'].iloc[-2]) and 
+        (crypto_df['low'].iloc[-1] < crypto_df['low'].iloc[-2])):
+        return True
+    else:
+        return False
+def inverted_hammer_bullish(crypto_df):
+    if ((crypto_df['close'].iloc[-3] < crypto_df['open'].iloc[-3]) and
+        (crypto_df['close'].iloc[-2] < crypto_df['open'].iloc[-2]) and
+        (crypto_df['close'].iloc[-1] > crypto_df['open'].iloc[-1]) and
+        (crypto_df['high'].iloc[-1] > crypto_df['high'].iloc[-2]) and 
+        (crypto_df['low'].iloc[-1] > crypto_df['low'].iloc[-2]) #This conditional part I might change to be low=open
+        ):
+        return True
+    else:
+        return False
 def main():
     start = default_timer()
     names_crypt = set_crypt_names()
@@ -119,5 +143,6 @@ def main():
         # data = set_data(crypt)
         ohlc = get_ohlc(crypt)
         create_candlestick(crypt,ohlc)
+        analysis_candlestick(ohlc, crypt)
 if __name__ == "__main__":
     main()

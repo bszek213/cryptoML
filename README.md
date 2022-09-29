@@ -39,3 +39,14 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 14    ENS    0.030906           False            False
 
 ```
+   crypto    reg_coef  MACD_cross_buy  MACD_cross_sell
+5     BTC  251.756272           False            False
+13    ETH   27.653922           False            False
+17    GNO    2.145629           False            False
+23  LUNA1    1.093027           False            False
+3    AVAX    0.539347           False            False
+20    LPT    0.235083           False            False
+21    LTC    0.215558           False            False
+14    FTM    0.051624           False            False
+7     CRV    0.050486           False            False
+11    ENS    0.030906           False            False
