@@ -27,16 +27,15 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 ## Top 10 performing Cryptos
 ```bash
    crypto    reg_coef  MACD_cross_buy  MACD_cross_sell
-7     BTC  240.264303           False            False
-17    ETH   26.526868           False            False
-22    GNO    1.964114           False            False
-31  LUNA1    1.081725           False            False
-4    AVAX    0.591182           False            False
-28    LPT    0.216415           False            False
-29    LTC    0.203888           False            False
-19    FTM    0.050840           False            False
-10    CRV    0.046167           False            False
-15    ENS    0.031658           False            False
+6     BTC  251.756272            True            False
+16    ETH   27.653922           False            False
+21    GNO    2.145629           False            False
+31  LUNA1    1.093027           False            False
+3    AVAX    0.539347           False            False
+28    LPT    0.235083           False            False
+29    LTC    0.215558           False            False
+18    FTM    0.051624           False            False
+9     CRV    0.050486           False            False
+14    ENS    0.030906           False            False
 
 ```
-
