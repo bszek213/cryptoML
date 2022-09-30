@@ -5,7 +5,7 @@ Candlestick analysis yFinance
 @author: bszekely
 """
 import yfinance as yf
-from os import getcwd, path, mkdir
+from os import getcwd, path, mkdir, remove
 from pandas import read_csv
 from timeit import default_timer
 import plotly.graph_objects as go
@@ -109,13 +109,27 @@ def create_candlestick(crypt,ohlc):
         print(f'{crypt} candlestick cannot be created')
     
 def analysis_candlestick(ohlc,crypt):
-    #Bullish Engulfing
+    text_file = open('candlestick_output.txt','a')
     engulf_out = bullish_engulf(ohlc)
     inv_hammer_out = inverted_hammer_bullish(ohlc)
     if engulf_out == True:
+        with open("candlestick_output.txt", "a") as text_file:
+            string_out = f'{crypt} bullish as denoted by bullish engulf pattern'
+            # text_file.write("bullish engulf pattern: %c" % (crypt))
+            text_file.write(string_out)
+            text_file.write("\n")
+        # string_out = f'{crypt} bullish as denoted by bullish engulf pattern'
+        # text_file.write(string_out)
         print(f'{crypt} bullish as denoted by bullish engulf pattern')
     elif inv_hammer_out == True:
+        with open("candlestick_output.txt", "a") as text_file:
+            string_out = f'{crypt} bullish as denoted by bullish inverted hammer bullish pattern'
+            text_file.write(string_out)
+            text_file.write("\n")
+        # string_out = f'{crypt} bullish as denoted by bullish inverted hammer bullish pattern'
+        # text_file.write(string_out)
         print(f'{crypt} bullish as denoted by bullish inverted hammer bullish pattern')
+    # text_file.close()
     
 def bullish_engulf(crypto_df):
     if ((crypto_df['close'].iloc[-1] > crypto_df['open'].iloc[-2]) and
@@ -137,6 +151,8 @@ def inverted_hammer_bullish(crypto_df):
         return False
 def main():
     start = default_timer()
+    if path.exists(path.join(getcwd(),'candlestick_output.txt')):
+        remove(path.join(getcwd(),'candlestick_output.txt'))
     names_crypt = set_crypt_names()
     for crypt in names_crypt:
         print(crypt)
@@ -144,5 +160,6 @@ def main():
         ohlc = get_ohlc(crypt)
         create_candlestick(crypt,ohlc)
         analysis_candlestick(ohlc, crypt)
+    
 if __name__ == "__main__":
     main()

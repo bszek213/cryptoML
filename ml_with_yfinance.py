@@ -379,7 +379,7 @@ def main():
     int_change = []
     below_zero_list = []
     macd_sell = []
-    for crypt in names_crypt:
+    for crypt in tqdm(names_crypt):
         print(crypt)
         while True:
             try:
