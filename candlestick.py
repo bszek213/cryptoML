@@ -112,25 +112,29 @@ def analysis_candlestick(ohlc,crypt):
     text_file = open('candlestick_output.txt','a')
     engulf_out = bullish_engulf(ohlc)
     inv_hammer_out = inverted_hammer_bullish(ohlc)
-    sold_3 = three_white_soldiers(ohlc)
+    morning_star_out = morning_star(ohlc)
     if engulf_out == True:
         with open("candlestick_output.txt", "a") as text_file:
-            string_out = f'{crypt} bullish -  engulf pattern'
+            string_out = f'{crypt} bullish bullish engulf pattern'
+            # text_file.write("bullish engulf pattern: %c" % (crypt))
             text_file.write(string_out)
             text_file.write("\n")
-        print(string_out)
-    elif inv_hammer_out == True:
+        # string_out = f'{crypt} bullish as denoted by bullish engulf pattern'
+        # text_file.write(string_out)
+        print(f'{crypt} bullish - engulf pattern')
+    if inv_hammer_out == True:
         with open("candlestick_output.txt", "a") as text_file:
-            string_out = f'{crypt} bullish - inverted hammer'
+            string_out = f'{crypt} bullish as denoted by bullish inverted hammer bullish pattern'
             text_file.write(string_out)
             text_file.write("\n")
-        print(string_out)
-    elif sold_3 == True:
+        # string_out = f'{crypt} bullish as denoted by bullish inverted hammer bullish pattern'
+        # text_file.write(string_out)
+        print(f'{crypt} bullish - inverted hammer bullish pattern')
+    if morning_star_out == True:
         with open("candlestick_output.txt", "a") as text_file:
-            string_out = f'{crypt} bullish - 3 White Soldiers'
+            string_out = f'{crypt} bullish - morning star pattern'
             text_file.write(string_out)
             text_file.write("\n")
-        print(string_out)
     # text_file.close()
     
 def bullish_engulf(crypto_df):
@@ -145,24 +149,22 @@ def inverted_hammer_bullish(crypto_df):
     if ((crypto_df['close'].iloc[-3] < crypto_df['open'].iloc[-3]) and
         (crypto_df['close'].iloc[-2] < crypto_df['open'].iloc[-2]) and
         (crypto_df['close'].iloc[-1] > crypto_df['open'].iloc[-1]) and
-        (crypto_df['high'].iloc[-1] > crypto_df['high'].iloc[-2]) and 
+        (crypto_df['high'].iloc[-1] > crypto_df['high'].iloc[-2]) and
+        (crypto_df['low'].iloc[-1] == crypto_df['open'].iloc[-1]) and
         (crypto_df['low'].iloc[-1] > crypto_df['low'].iloc[-2]) #This conditional part I might change to be low=open
         ):
         return True
     else:
         return False
-def three_white_soldiers(crypto_df):
-    mean_3 = (crypto_df['open'].iloc[-3] + crypto_df['close'].iloc[-3]) / 2
-    mean_2 = (crypto_df['open'].iloc[-2] + crypto_df['close'].iloc[-2]) / 2
-    mean_1 = (crypto_df['open'].iloc[-1] + crypto_df['close'].iloc[-1]) / 2
-    if ((crypto_df['close'].iloc[-3] > crypto_df['open'].iloc[-2]) and
-        (crypto_df['open'].iloc[-2] > mean_3) and
-         (crypto_df['close'].iloc[-2] > crypto_df['open'].iloc[-1]) and
-         (crypto_df['open'].iloc[-1] > mean_2) and
-         (crypto_df['close'].iloc[-3] > crypto_df['open'].iloc[-3]) and 
-         (crypto_df['close'].iloc[-2] > crypto_df['open'].iloc[-2]) and 
-         (crypto_df['close'].iloc[-1] > crypto_df['open'].iloc[-1])):
-             return True
+def morning_star(crypto_df):
+    if ((crypto_df['close'].iloc[-2] > crypto_df['open'].iloc[-2]) and
+        (crypto_df['close'].iloc[-1] > crypto_df['open'].iloc[-1]) and
+        (crypto_df['low'].iloc[-2] < crypto_df['low'].iloc[-1]) and
+        (crypto_df['high'].iloc[-2] > crypto_df['low'].iloc[-1]) and
+        (crypto_df['close'].iloc[-2] > crypto_df['low'].iloc[-1]) and
+        (crypto_df['close'].iloc[-1] > crypto_df['high'].iloc[-2])
+        ):
+        return True
     else:
         return False
 def main():
