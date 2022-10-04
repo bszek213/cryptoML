@@ -14,6 +14,8 @@ conda env create -f crypto.yaml
 python ml_with_yfinance.py
 # Technical Analysis
 python check_positive_trend.py -s 1440 -c BTCUSD
+# Candlestick Patterns
+python candlestick.py
 ```
 ### Sample Output from Time Series Forecasting Matrix
 ![alt text](https://github.com/bszek213/cryptoML/blob/main/forecast_ML/BTC/BTC.png)
