@@ -14,6 +14,8 @@ conda env create -f crypto.yaml
 python ml_with_yfinance.py
 # Technical Analysis
 python check_positive_trend.py -s 1440 -c BTCUSD
+# Candlestick Patterns
+python candlestick.py
 ```
 ### Sample Output from Time Series Forecasting Matrix
 ![alt text](https://github.com/bszek213/cryptoML/blob/main/forecast_ML/BTC/BTC.png)
@@ -37,5 +39,12 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 5     CRV    0.053200           False            False
 12    FTM    0.052249           False            False
 28    XMR    0.034384           False            False
-
+```
+## Candlestick Results
+```bash
+LUNA2 bullish - piercing line pattern
+OXT bullish - piercing line pattern
+RARE bullish - inverted hammer pattern
+RARE bullish - piercing line pattern
+SBR bullish - piercing line pattern
 ```

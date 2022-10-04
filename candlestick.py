@@ -113,6 +113,7 @@ def analysis_candlestick(ohlc,crypt):
     engulf_out = bullish_engulf(ohlc)
     inv_hammer_out = inverted_hammer_bullish(ohlc)
     morning_star_out = morning_star(ohlc)
+    pierce_line_out = piercing_line(ohlc)
     if engulf_out == True:
         with open("candlestick_output.txt", "a") as text_file:
             string_out = f'{crypt} bullish bullish engulf pattern'
@@ -124,7 +125,7 @@ def analysis_candlestick(ohlc,crypt):
         print(f'{crypt} bullish - engulf pattern')
     if inv_hammer_out == True:
         with open("candlestick_output.txt", "a") as text_file:
-            string_out = f'{crypt} bullish as denoted by bullish inverted hammer bullish pattern'
+            string_out = f'{crypt} bullish - inverted hammer  pattern'
             text_file.write(string_out)
             text_file.write("\n")
         # string_out = f'{crypt} bullish as denoted by bullish inverted hammer bullish pattern'
@@ -135,6 +136,13 @@ def analysis_candlestick(ohlc,crypt):
             string_out = f'{crypt} bullish - morning star pattern'
             text_file.write(string_out)
             text_file.write("\n")
+            print(string_out)
+    if pierce_line_out == True:
+        with open("candlestick_output.txt", "a") as text_file:
+            string_out = f'{crypt} bullish - piercing line pattern'
+            text_file.write(string_out)
+            text_file.write("\n")
+            print(string_out)
     # text_file.close()
     
 def bullish_engulf(crypto_df):
@@ -157,12 +165,29 @@ def inverted_hammer_bullish(crypto_df):
     else:
         return False
 def morning_star(crypto_df):
-    if ((crypto_df['close'].iloc[-2] > crypto_df['open'].iloc[-2]) and
+    # if ((crypto_df['close'].iloc[-2] > crypto_df['open'].iloc[-2]) and
+    #     (crypto_df['close'].iloc[-1] > crypto_df['open'].iloc[-1]) and
+    #     (crypto_df['low'].iloc[-2] < crypto_df['low'].iloc[-1]) and
+    #     (crypto_df['high'].iloc[-2] > crypto_df['low'].iloc[-1]) and
+    #     (crypto_df['close'].iloc[-2] > crypto_df['low'].iloc[-1]) and
+    #     (crypto_df['close'].iloc[-1] > crypto_df['high'].iloc[-2])
+    #     ):
+    if ((crypto_df['close'].iloc[-4] < crypto_df['open'].iloc[-4]) and
+        (crypto_df['close'].iloc[-3] < crypto_df['open'].iloc[-3]) and
+        (crypto_df['close'].iloc[-2] < crypto_df['open'].iloc[-2]) and
         (crypto_df['close'].iloc[-1] > crypto_df['open'].iloc[-1]) and
-        (crypto_df['low'].iloc[-2] < crypto_df['low'].iloc[-1]) and
-        (crypto_df['high'].iloc[-2] > crypto_df['low'].iloc[-1]) and
-        (crypto_df['close'].iloc[-2] > crypto_df['low'].iloc[-1]) and
-        (crypto_df['close'].iloc[-1] > crypto_df['high'].iloc[-2])
+        (crypto_df['low'].iloc[-3] < crypto_df['open'].iloc[-2]) and
+        (crypto_df['low'].iloc[-1] > crypto_df['open'].iloc[-1])
+            ):
+        return True
+    else:
+        return False
+def piercing_line(crypto_df):
+    mid_line = (crypto_df['close'].iloc[-2] + crypto_df['open'].iloc[-2]) / 2
+    if ((crypto_df['close'].iloc[-2] < crypto_df['open'].iloc[-2]) and
+        (crypto_df['close'].iloc[-1] > crypto_df['open'].iloc[-1]) and
+        mid_line > crypto_df['open'].iloc[-1] and
+        mid_line < crypto_df['close'].iloc[-1]
         ):
         return True
     else:
@@ -178,6 +203,6 @@ def main():
         ohlc = get_ohlc(crypt)
         create_candlestick(crypt,ohlc)
         analysis_candlestick(ohlc, crypt)
-    
+    print(f'{default_timer() - start} time to complete')
 if __name__ == "__main__":
     main()
