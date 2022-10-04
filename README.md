@@ -37,5 +37,12 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 5     CRV    0.053200           False            False
 12    FTM    0.052249           False            False
 28    XMR    0.034384           False            False
-
+```
+## Candlestick Results
+```bash
+KEY bullish - piercing line pattern
+LUNA2 bullish - piercing line pattern
+OXT bullish - piercing line pattern
+RARE bullish as denoted by bullish inverted hammer bullish pattern
+RARE bullish - piercing line pattern
 ```
