@@ -42,9 +42,9 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 ```
 ## Candlestick Results
 ```bash
-KEY bullish - piercing line pattern
 LUNA2 bullish - piercing line pattern
 OXT bullish - piercing line pattern
-RARE bullish as denoted by bullish inverted hammer bullish pattern
+RARE bullish - inverted hammer pattern
 RARE bullish - piercing line pattern
+SBR bullish - piercing line pattern
 ```
