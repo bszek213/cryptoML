@@ -125,7 +125,7 @@ def analysis_candlestick(ohlc,crypt):
         print(f'{crypt} bullish - engulf pattern')
     if inv_hammer_out == True:
         with open("candlestick_output.txt", "a") as text_file:
-            string_out = f'{crypt} bullish as denoted by bullish inverted hammer bullish pattern'
+            string_out = f'{crypt} bullish - inverted hammer  pattern'
             text_file.write(string_out)
             text_file.write("\n")
         # string_out = f'{crypt} bullish as denoted by bullish inverted hammer bullish pattern'
