@@ -11,6 +11,7 @@ from timeit import default_timer
 import plotly.graph_objects as go
 import krakenex
 from pykrakenapi import KrakenAPI
+from check_positive_trend import stoch_RSI
 # def kraken_info():
 #     print('initialize kraken data')
 #     api = krakenex.API()
@@ -82,31 +83,37 @@ def create_candlestick(crypt,ohlc):
     #                                      high=data['High'],
     #                                      low=data['Low'],
     #                                      close=data['Close']))
-    fig = go.FigureWidget(go.Candlestick(x=ohlc.index,
-                                      open=ohlc['open'],
-                                      high=ohlc['high'],
-                                      low=ohlc['low'],
-                                      close=ohlc['close']))
-    try:
-        if len(ohlc.index) > 30:
-            start = ohlc.index[-30]
-            end = ohlc.index[-1]
-            fig.update_xaxes(range=[start, end])
-            start = min(ohlc['low'].iloc[-30::])
-            end = max(ohlc['high'].iloc[-30::])
-        else:
-            start = ohlc.index[-10]
-            end = ohlc.index[-1]
-            fig.update_xaxes(range=[start, end])
-            start = min(ohlc['low'].iloc[-10::])
-            end = max(ohlc['high'].iloc[-10::])
-        fig.update_yaxes(range=[start, end])
-        fig.update_layout(title=crypt,
-                          margin=dict(l=50,r=50,b=100,t=100,pad=4),
-                          xaxis_rangeslider_visible=False)
-        fig.write_image(final_dir)
-    except:
-        print(f'{crypt} candlestick cannot be created')
+    
+    if len(ohlc.index) > 30:
+        dates_index = ohlc.index[-30::]
+        open_data = ohlc['open'].iloc[-30::]
+        high_data = ohlc['high'].iloc[-30::]
+        low_data = ohlc['low'].iloc[-30::]
+        close_data = ohlc['close'].iloc[-30::]
+        start = min(ohlc['low'].iloc[-30::])
+        end = max(ohlc['high'].iloc[-30::])
+    else:
+        dates_index = ohlc.index[-10::]
+        open_data = ohlc['open'].iloc[-10::]
+        high_data = ohlc['high'].iloc[-10::]
+        low_data = ohlc['low'].iloc[-10::]
+        close_data = ohlc['close'].iloc[-10::]
+        start = min(ohlc['low'].iloc[-10::])
+        end = max(ohlc['high'].iloc[-10::])
+
+    fig = go.FigureWidget(go.Candlestick(x=dates_index,
+                                      open=open_data,
+                                      high=high_data,
+                                      low=low_data,
+                                      close=close_data))
+    fig.update_yaxes(range=[start, end])
+    fig.update_layout(title=crypt,
+                      margin=dict(l=50,r=50,b=100,t=100,pad=4),
+                      xaxis_rangeslider_visible=False,
+                      yaxis_title='Price USD')
+    fig.write_image(final_dir,scale=2)
+    # except:
+    #     print(f'{crypt} candlestick cannot be created')
     
 def analysis_candlestick(ohlc,crypt):
     text_file = open('candlestick_output.txt','a')
@@ -114,6 +121,7 @@ def analysis_candlestick(ohlc,crypt):
     inv_hammer_out = inverted_hammer_bullish(ohlc)
     morning_star_out = morning_star(ohlc)
     pierce_line_out = piercing_line(ohlc)
+    three_soldiers_out = three_white_soldiers(ohlc)
     if engulf_out == True:
         with open("candlestick_output.txt", "a") as text_file:
             string_out = f'{crypt} bullish bullish engulf pattern'
@@ -140,6 +148,12 @@ def analysis_candlestick(ohlc,crypt):
     if pierce_line_out == True:
         with open("candlestick_output.txt", "a") as text_file:
             string_out = f'{crypt} bullish - piercing line pattern'
+            text_file.write(string_out)
+            text_file.write("\n")
+            print(string_out)
+    if three_soldiers_out == True:
+        with open("candlestick_output.txt", "a") as text_file:
+            string_out = f'{crypt} bullish - three white soldiers pattern'
             text_file.write(string_out)
             text_file.write("\n")
             print(string_out)
@@ -187,8 +201,27 @@ def piercing_line(crypto_df):
     if ((crypto_df['close'].iloc[-2] < crypto_df['open'].iloc[-2]) and
         (crypto_df['close'].iloc[-1] > crypto_df['open'].iloc[-1]) and
         mid_line > crypto_df['open'].iloc[-1] and
-        mid_line < crypto_df['close'].iloc[-1]
+        mid_line < crypto_df['close'].iloc[-1] and 
+        (crypto_df['low'].iloc[-2] > crypto_df['low'].iloc[-1])
         ):
+        return True
+    else:
+        return False
+def three_white_soldiers(crypto_df):
+    try:
+        out, _, _ = stoch_RSI(crypto_df)
+        stoch_rsi = out['Stoch_RSI'].iloc[-1]
+    except:
+        stoch_rsi = 100
+    if ((crypto_df['close'].iloc[-3] > crypto_df['open'].iloc[-3]) and
+        (crypto_df['close'].iloc[-2] > crypto_df['open'].iloc[-2]) and
+        (crypto_df['close'].iloc[-1] > crypto_df['open'].iloc[-1]) and
+        (crypto_df['open'].iloc[-2] > crypto_df['open'].iloc[-3]) and 
+        (crypto_df['open'].iloc[-1] > crypto_df['open'].iloc[-2]) and
+        (crypto_df['close'].iloc[-2] > crypto_df['close'].iloc[-3]) and
+        (crypto_df['close'].iloc[-1] > crypto_df['close'].iloc[-2]) and
+        (stoch_rsi < 70)
+            ):
         return True
     else:
         return False

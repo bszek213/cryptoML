@@ -29,22 +29,21 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 ## Top 10 performing Cryptos
 ```bash
    crypto    reg_coef  MACD_cross_buy  MACD_cross_sell
-4     BTC  291.087474           False            False
-11    ETH   32.391578           False            False
-27   WBTC   26.477027           False            False
-15    GNO    2.723575           False            False
-2    AVAX    0.436584           False            False
-17    LPT    0.303859           False            False
-19    LTC    0.255842           False            False
-5     CRV    0.053200           False            False
-12    FTM    0.052249           False            False
-28    XMR    0.034384           False            False
+6     BTC  292.527841           False            False
+29   WBTC   37.746647           False            False
+13    ETH   35.793396           False            False
+17    GNO    3.088090           False            False
+4    AVAX    0.417297           False            False
+19    LPT    0.355017           False            False
+21    LTC    0.286711           False            False
+9     DOT    0.062374           False            False
+14    FTM    0.054599           False            False
+11    ENS    0.036449           False            False
 ```
 ## Candlestick Results
 ```bash
-LUNA2 bullish - piercing line pattern
-OXT bullish - piercing line pattern
-RARE bullish - inverted hammer pattern
-RARE bullish - piercing line pattern
-SBR bullish - piercing line pattern
+AKT bullish - piercing line pattern
+COMP bullish - three white soldiers pattern
+LINK bullish - three white soldiers pattern
+TEER bullish - inverted hammer  pattern
 ```
