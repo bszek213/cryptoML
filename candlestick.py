@@ -28,6 +28,7 @@ def get_ohlc(crypt,sample_rate=1440):
         DESCRIPTION.
     inter : int variable - sampling window
         time frame interval minutes 1 (default), 5, 15, 30, 60, 240, 1440, 10080, 21600.
+        ((((((((((((((((((sampling time in UTC time zone))))))))))))))))))
     Returns
     -------
     Pandas df 
