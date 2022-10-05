@@ -42,8 +42,10 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 ```
 ## Candlestick Results
 ```bash
-AKT bullish - piercing line pattern
-COMP bullish - three white soldiers pattern
-LINK bullish - three white soldiers pattern
-TEER bullish - inverted hammer  pattern
+ANKR bullish bullish engulf pattern
+GST bullish - inverted hammer  pattern
+NYM bullish - piercing line pattern
+OCEAN bullish bullish engulf pattern
+UMA bullish bullish engulf pattern
+XRP bullish - three white soldiers pattern
 ```
