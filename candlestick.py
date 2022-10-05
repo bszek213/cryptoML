@@ -220,7 +220,7 @@ def three_white_soldiers(crypto_df):
         (crypto_df['open'].iloc[-1] > crypto_df['open'].iloc[-2]) and
         (crypto_df['close'].iloc[-2] > crypto_df['close'].iloc[-3]) and
         (crypto_df['close'].iloc[-1] > crypto_df['close'].iloc[-2]) and
-        stoch_rsi < 70
+        (stoch_rsi < 70)
             ):
         return True
     else:
