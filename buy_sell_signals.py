@@ -5,7 +5,24 @@ Created on Tue Feb  8 17:22:20 2022
 @author: brianszekely
 buy and sell conditions
 """
-
+from argparse import ArgumentParser
+import krakenex
+from pykrakenapi import KrakenAPI
+from os import getcwd
+from os.path import join
+from pandas import read_csv
+def readin_cryptos():
+    direct = getcwd()
+    location = join(direct, 'crypto_trade_min.csv')
+    df_crypto = read_csv(location)
+    print(f' number of cryptos monitoring: {len(df_crypto)}')
+    return df_crypto
+def kraken_info():
+    print('initialize kraken data')
+    api = krakenex.API()
+    api.load_key('key.txt')
+    kraken = KrakenAPI(api)
+    return kraken
 def buy_signal_hft(trade_crypt, kraken, volume_inst, account_bal):
     traded = False
     try:
@@ -369,3 +386,22 @@ def buy_signal_basic(trade_crypt, kraken, volume_inst, account_bal):
         open_pos = False
         MATI_ask = 0.0
         return open_pos
+def main():
+    parser = ArgumentParser()
+    parser.add_argument("-c", "--crypto", help = "input the crypt to trade with USD.")
+    parser.add_argument("-t", "--trade", help = "input what kind of trade buy or sell.")
+    args = parser.parse_args()
+    krak = kraken_info()
+    name = args.crypto
+    crypto_list= readin_cryptos()
+    old_name = name.replace('USD','')
+    ind_cryp_t = crypto_list[crypto_list['crypto'] == old_name]
+    volume_inst = ind_cryp_t['Order'].values
+    if args.trade == 'buy':
+        balance = krak.get_account_balance()
+        buy_signal_hft(args.crypto, krak, volume_inst, balance.vol['ZUSD'])
+    elif args.trade == 'sell':
+        balance = krak.get_account_balance()
+        basic_sell(args.crypto, krak, volume_inst, balance)
+if __name__ == "__main__":
+    main()
