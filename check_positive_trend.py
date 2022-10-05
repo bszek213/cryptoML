@@ -153,7 +153,6 @@ def stoch_RSI(crypto_df):
     min_val  = crypto_df['RSI'].rolling(window=14, center=False).min()
     max_val = crypto_df['RSI'].rolling(window=14, center=False).max()
     crypto_df['Stoch_RSI'] = ((crypto_df['RSI'] - min_val) / (max_val - min_val)) * 100
-    
     #FILTERING STEP
     try:
         sav_data =  savgol_filter(crypto_df['Stoch_RSI'].dropna().values, filter_val_rsi, 2)
