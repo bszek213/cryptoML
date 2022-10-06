@@ -41,11 +41,8 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 11    ENS    0.036449           False            False
 ```
 ## Candlestick Results
+run candlestick analysis before 5pm PDT, as the sample rates are on UTC time. The
+new "day" will start then.
 ```bash
-ANKR bullish bullish engulf pattern
-GST bullish - inverted hammer  pattern
-NYM bullish - piercing line pattern
-OCEAN bullish bullish engulf pattern
-UMA bullish bullish engulf pattern
 XRP bullish - three white soldiers pattern
 ```
