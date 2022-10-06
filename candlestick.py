@@ -11,7 +11,7 @@ from timeit import default_timer
 import plotly.graph_objects as go
 import krakenex
 from pykrakenapi import KrakenAPI
-from check_positive_trend import stoch_RSI
+from technical_analysis import stoch_RSI
 # def kraken_info():
 #     print('initialize kraken data')
 #     api = krakenex.API()
