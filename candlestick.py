@@ -11,7 +11,7 @@ from timeit import default_timer
 import plotly.graph_objects as go
 import krakenex
 from pykrakenapi import KrakenAPI
-from check_positive_trend import stoch_RSI
+from technical_analysis import stoch_RSI
 # def kraken_info():
 #     print('initialize kraken data')
 #     api = krakenex.API()
@@ -28,6 +28,7 @@ def get_ohlc(crypt,sample_rate=1440):
         DESCRIPTION.
     inter : int variable - sampling window
         time frame interval minutes 1 (default), 5, 15, 30, 60, 240, 1440, 10080, 21600.
+        ((((((((((((((((((sampling time in UTC time zone))))))))))))))))))
     Returns
     -------
     Pandas df 
