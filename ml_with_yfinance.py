@@ -18,7 +18,7 @@ from pandas import DataFrame, read_csv
 import yfinance as yf
 import itertools
 from timeit import default_timer
-from numpy import arange, mean, empty, nan, array, zeros, percentile
+from numpy import arange, mean, empty, nan, array, zeros, percentile, log
 from tqdm import tqdm
 # from multiprocessing import Process
 # import multiprocessing as mp
@@ -48,6 +48,20 @@ def set_data(crypt):
 def convert_to_panda(inst_data):
     df = DataFrame(list(zip(inst_data['Close'],inst_data.index)),columns = ['y', 'ds'])
     return df
+
+def running_oeff_deter(inst_data):
+    day_7_std = inst_data['y'].rolling(7).std()
+    day_7_mean = inst_data['y'].rolling(7).mean()
+    day_30_std = inst_data['y'].rolling(30).std()
+    day_30_mean = inst_data['y'].rolling(30).mean()
+    inst_data['coeff_7_day'] = day_7_std / day_7_mean
+    inst_data['coeff_30_day'] = day_30_std / day_30_mean
+    return inst_data
+
+def volatility(inst_data):
+    inst_data['log_return'] = log(inst_data['y']/inst_data['y'].shift())
+    volatility = inst_data['log_return'].std()*365**0.5 #365 days of trading square root
+    return volatility,inst_data
 
 def macd(crypto_df_final,crypt):
     kraken_data = get_ohlc(crypt)
@@ -122,6 +136,8 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
         cross_point_sell = True
     else:
         cross_point_sell = False
+    #Volatility
+    volatility_value,inst_data = volatility(inst_data)
     #Linear Regression
     data_len = 60 #last 30 days + the 30 day prediction
     a_list = list(arange(len(forecast)-data_len,len(forecast)))
@@ -139,8 +155,14 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
                       min_periods=12-1).mean()
     plt.plot(inst_data['ds'],inst_data['sma_1'],'r')
     plt.plot(inst_data['ds'],inst_data['sma_2'],'b')
-    a = add_changepoints_to_plot(fig2.gca(), mod, forecast)
-    str_combine = crypt +': change:' + str(changepoint_prior_scale) + ', season: ' + str(seasonality_prior_scale) +  ', error: ' + str(error) + ', mode: ' + str(seasonality_mode) + ', holiday: ' + str(seasonality_prior_scale)
+    add_changepoints_to_plot(fig2.gca(), mod, forecast)
+    vola_percent = str(round(volatility_value*100,3))
+    inst_data = running_oeff_deter(inst_data)
+    # str_combine = crypt + ' volatility: '+ vola_percent + ': change:' + str(changepoint_prior_scale) + ', season: ' + str(seasonality_prior_scale) +  ', error: ' + str(round(error,2)) + ', mode: ' + str(seasonality_mode) + ', holiday: ' + str(seasonality_prior_scale)
+    # str_combine = crypt + ' volatility: '+ vola_percent + " 7 day variance: "+  str(round(inst_data['coeff_7_day'].iloc[-1]*100,3)) + '% ' +"30 day variance: "+ str(round(inst_data['coeff_30_day'].iloc[-1]*100,3)) + '% ' + ' error: ' + str(round(error,2))
+    day_7_var = str(round(inst_data['coeff_7_day'].iloc[-1]*100,3))
+    day_30_var = str(round(inst_data['coeff_30_day'].iloc[-1]*100,3))
+    str_combine = f'{crypt} | volatility: {vola_percent}% | 7 day variance: {day_7_var}% | 30 day variance: {day_30_var}% | error: {str(round(error,2))}%'
     # plt.text(inst_data['ds'].iloc[0], inst_data['y'].max()/2, str_combine, fontsize=10)
     plt.title(str_combine)
     #make and check directories
@@ -157,7 +179,7 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     plt.savefig(final_dir,dpi=300)
     plt.close()
     #MACD line and regression
-    fig, ax = plt.subplots(2,1,figsize=(16, 16), dpi=350) 
+    fig, ax = plt.subplots(3,1,figsize=(16, 16), dpi=350) 
     ax[0].plot(kraken_data.index,kraken_data['macd_diff'],'r',label='MACD') #old x is inst_data['ds']
     ax[0].plot(kraken_data.index,kraken_data['signal_line'],'b',label='signal') #old x is inst_data['ds']
     ax[0].hlines(y = 0, xmin=kraken_data.index[0], xmax=kraken_data.index[-1]) #xmin=inst_data['ds'].iloc[0], xmax=inst_data['ds'].iloc[-1]
@@ -191,6 +213,18 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     ax[1].set_xlabel('TIME')
     ax[1].set_ylabel('Price Values')
     ax[1].grid(True)
+    #plot volatility
+    # ax[2].hist(inst_data['log_return'], bins=50)
+    # ax[2].set_xlabel('Log return')
+    # ax[2].set_ylabel('frequency')
+    title_2 = f'Volatility %: {vola_percent}'
+    plt.plot(inst_data['ds'],inst_data['coeff_7_day'],'r',label='coeff_7_day')
+    plt.plot(inst_data['ds'],inst_data['coeff_30_day'],'b',label='coeff_30_day')
+    ax[2].legend()
+    ax[2].set_xlabel('TIME')
+    ax[2].set_ylabel('Proportion of the std to the mean')
+    ax[2].grid(True)
+    ax[2].set_title(title_2)
     direct = os.getcwd()
     name = crypt + '_MACD.png'
     direct = os.getcwd()

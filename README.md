@@ -29,20 +29,32 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 ## Top 10 performing Cryptos
 ```bash
    crypto    reg_coef  MACD_cross_buy  MACD_cross_sell
-7     BTC  315.273800           False            False
-31   WBTC   47.850330           False            False
-14    ETH   34.573647           False            False
-18    GNO    3.366891           False            False
-4    AVAX    0.394396           False            False
-20    LPT    0.388165           False            False
-22    LTC    0.304426           False            False
-10    DOT    0.064289           False            False
-8     CRV    0.053992           False            False
-15    FTM    0.051558           False            False
+9     BTC  342.933466           False            False
+43   WBTC   50.523715           False            False
+19    ETH   37.009757           False            False
+25    GNO    3.713055           False            False
+30    LPT    0.486213           False            False
+5    AVAX    0.365264           False            False
+32    LTC    0.350030           False            False
+44    XMR    0.122482           False            False
+15    DOT    0.079124           False            False
+12    CRV    0.057860           False            False
 ```
 ## Candlestick Results
 run candlestick analysis before 5pm PDT, as the sample rates are on UTC time. The
 new "day" will start then.
 ```bash
-XRP bullish - three white soldiers pattern
+CQT bullish - inverted hammer  pattern
+CVC bullish - inverted hammer  pattern
+FARM bullish - inverted hammer  pattern
+FET bullish - inverted hammer  pattern
+FLOW bullish - inverted hammer  pattern
+JUNO bullish - piercing line pattern
+KEEP bullish - inverted hammer  pattern
+KSM bullish - inverted hammer  pattern
+PERP bullish - inverted hammer  pattern
+SRM bullish - inverted hammer  pattern
+TBTC bullish - piercing line pattern
+TOKE bullish bullish engulf pattern
+UNFI bullish - inverted hammer  pattern
 ```
