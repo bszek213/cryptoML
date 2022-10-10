@@ -1,2 +1,8 @@
-COMP bullish - three white soldiers pattern
-SUPER bullish - inverted hammer  pattern
+ACH bullish bullish engulf pattern
+ACH bullish - piercing line pattern
+CVX bullish - piercing line pattern
+DAI bullish - piercing line pattern
+GHST bullish bullish engulf pattern
+KINT bullish bullish engulf pattern
+LINK bullish bullish engulf pattern
+LTC bullish bullish engulf pattern
