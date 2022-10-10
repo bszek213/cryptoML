@@ -38,6 +38,9 @@ def plot_all(main_df,crypt_count):
     rolling_mean = zeros(len(main_df))
     for i in range(len(main_df)):
         rolling_mean[i] = nanmedian(main_df.iloc[i])
+    main_df['rolling_median'] = rolling_mean
+    main_df['rolling_median_30'] = main_df['rolling_median'].rolling(21).mean()
+    main_df['rolling_median_14'] = main_df['rolling_median'].rolling(7).mean()
     plt.figure(figsize=(12, 10), dpi=350)
     for crypt in main_df.columns:
         plt.plot(main_df[crypt],'tab:gray')
@@ -46,6 +49,8 @@ def plot_all(main_df,crypt_count):
                     textcoords='offset points', 
                     text=crypt, va='center',fontsize=8)
     plt.plot(main_df.index,rolling_mean,linewidth=3,color='blue',label='2-week rolling median')
+    plt.plot(main_df.index,main_df['rolling_median_30'],linewidth=3,color='red',label=' 21 day rolling average of the median')
+    plt.plot(main_df.index,main_df['rolling_median_14'],linewidth=3,color='yellow',label='7 day rolling average of the median')
     lower = nanmean(rolling_mean) - (nanmean(rolling_mean) * 9)
     upper = abs(nanmean(rolling_mean) + (nanmean(rolling_mean) * 9))
     plt.ylim([lower,upper])
