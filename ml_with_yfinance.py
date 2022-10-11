@@ -109,10 +109,13 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
                   seasonality_mode=seasonality_mode)
     mod.add_country_holidays(country_name='US')
     final = mod.fit(inst_data)
-    
     #Collect error - add ability to collect the average error across all horizons, then get the average error among all cryptos, if the error is below the average then buy crypto (it will be another condition)
     future = final.make_future_dataframe(periods=per_for, freq='D') #predict next 30 days
     forecast = final.predict(future)
+    #Calculae MAPE on fit vs. actual 
+    forecast_test = final.predict(inst_data)
+    error_training = mean((abs(inst_data['y'].values - forecast_test['yhat'].values)
+                        / inst_data['y'].values) * 100)
     #plot the whole figure
     fig2 = final.plot(forecast)
     kraken_data, q25, q75 = macd(inst_data,crypt)
@@ -162,7 +165,7 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     # str_combine = crypt + ' volatility: '+ vola_percent + " 7 day variance: "+  str(round(inst_data['coeff_7_day'].iloc[-1]*100,3)) + '% ' +"30 day variance: "+ str(round(inst_data['coeff_30_day'].iloc[-1]*100,3)) + '% ' + ' error: ' + str(round(error,2))
     day_7_var = str(round(inst_data['coeff_7_day'].iloc[-1]*100,3))
     day_30_var = str(round(inst_data['coeff_30_day'].iloc[-1]*100,3))
-    str_combine = f'{crypt} | volatility: {vola_percent}% | 7 day variance: {day_7_var}% | 30 day variance: {day_30_var}% | error: {str(round(error,2))}%'
+    str_combine = f'{crypt} | volatility: {vola_percent}% | 7 day variance: {day_7_var}% | 30 day variance: {day_30_var}% | error: {str(round(error_training,2))}%'
     # plt.text(inst_data['ds'].iloc[0], inst_data['y'].max()/2, str_combine, fontsize=10)
     plt.title(str_combine)
     #make and check directories
@@ -268,7 +271,7 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     plt.savefig(final_dir,dpi=300)
     plt.close()
     # save_error = 0
-    return forecast, cross_point_buy, cross_point_sell, reg.coef_[0], error
+    return forecast, cross_point_buy, cross_point_sell, reg.coef_[0], error_training
 
 def model_tuning(df,crypt):
     param_grid = {  
@@ -436,7 +439,7 @@ def main():
                 change, season, error, season_mode, holiday = read_params(final_dir)
             forecast, cross_point_buy, cross_point_sell, reg_coef, error = model(df_data, 31, crypt, error, change, season, season_mode, holiday)
             #Regress predictions
-            if reg_coef > 0 and error < 500:
+            if reg_coef > 0 and error < 200:
                 # if cross_point == True:# and below_zero == True:
                 crypt_above_zero.append(crypt)
                 int_change.append(reg_coef)
