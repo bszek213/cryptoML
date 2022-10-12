@@ -10,7 +10,7 @@ conda env create -f crypto.yaml
 ## Usage
 
 ```python
-# Time Series Forecasting
+# Time Series Forecasting - cumulative log returns
 python ml_with_yfinance.py
 # Technical Analysis
 python check_positive_trend.py -s 1440 -c BTCUSD
@@ -25,34 +25,26 @@ python candlestick.py
 ### Sample Output from the Technical Analysis
 ![alt text](https://github.com/bszek213/cryptoML/blob/dev/technical_analysis/BTCUSD.svg)
 
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
 ## Top 10 performing Cryptos
 ```bash
    crypto    reg_coef  MACD_cross_buy  MACD_cross_sell
-9     BTC  333.636667           False            False
-45   WBTC   52.840949           False            False
-19    ETH   37.748911           False            False
-25    GNO    3.931737           False            False
-5    AVAX    0.736194           False            False
-31    LPT    0.493533           False            False
-33    LTC    0.355463           False            False
-15    DOT    0.077802           False            False
-46    XMR    0.066955           False            False
-21    FTM    0.054434           False            False
+6    COMP  0.100889           False            False
+13    FTM  0.046808           False            False
+19    LPT  0.040716           False            False
+22  MATIC  0.025588           False            False
+12    FIS  0.019431           False            False
+5     BTC  0.018828           False            False
+9     ENJ  0.013895           False            False
+27  SUSHI  0.013310           False            False
+20    LRC  0.012063           False            False
+3    AVAX  0.011485           False            False
 ```
 ## Candlestick Results
 run candlestick analysis before 5pm PDT, as the sample rates are on UTC time. The
 new "day" will start then.
 ```bash
-ACH bullish bullish engulf pattern
-ACH bullish - piercing line pattern
-CVX bullish - piercing line pattern
-DAI bullish - piercing line pattern
-GHST bullish bullish engulf pattern
-KINT bullish bullish engulf pattern
-LINK bullish bullish engulf pattern
-LTC bullish bullish engulf pattern
+ETC bullish - inverted hammer  pattern
+RUNE bullish - inverted hammer  pattern
 ```
-
+## Contributing
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
