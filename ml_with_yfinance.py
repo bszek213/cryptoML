@@ -46,14 +46,19 @@ def set_data(crypt):
     return history
 
 def convert_to_panda(inst_data):
-    df = DataFrame(list(zip(inst_data['Close'],inst_data.index)),columns = ['y', 'ds'])
+    #TODO: make a simple return (Done) and a log return
+    temp = log(inst_data['Close']/inst_data['Close'].shift(1))
+    inst_data['log_return_sum'] = temp.cumsum()
+    # inst_data['simple_return_values'] = inst_data['Close'].pct_change().cumsum()#(inst_data['Close'].shift()-inst_data['Close']) / inst_data['Close'] #Simple return 
+    inst_data.dropna(inplace=True)
+    df = DataFrame(list(zip(inst_data['log_return_sum'],inst_data.index)),columns = ['y', 'ds'])
     return df
 
-def running_oeff_deter(inst_data):
-    day_7_std = inst_data['y'].rolling(7).std()
-    day_7_mean = inst_data['y'].rolling(7).mean()
-    day_30_std = inst_data['y'].rolling(30).std()
-    day_30_mean = inst_data['y'].rolling(30).mean()
+def running_coeff_deter(inst_data):
+    day_7_std = inst_data['close'].rolling(7).std()
+    day_7_mean = inst_data['close'].rolling(7).mean()
+    day_30_std = inst_data['close'].rolling(30).std()
+    day_30_mean = inst_data['close'].rolling(30).mean()
     inst_data['coeff_7_day'] = day_7_std / day_7_mean
     inst_data['coeff_30_day'] = day_30_std / day_30_mean
     return inst_data
@@ -109,16 +114,17 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
                   seasonality_mode=seasonality_mode)
     mod.add_country_holidays(country_name='US')
     final = mod.fit(inst_data)
+    
     #Collect error - add ability to collect the average error across all horizons, then get the average error among all cryptos, if the error is below the average then buy crypto (it will be another condition)
     future = final.make_future_dataframe(periods=per_for, freq='D') #predict next 30 days
     forecast = final.predict(future)
-    #Calculae MAPE on fit vs. actual 
-    forecast_test = final.predict(inst_data)
-    error_training = mean((abs(inst_data['y'].values - forecast_test['yhat'].values)
-                        / inst_data['y'].values) * 100)
     #plot the whole figure
     fig2 = final.plot(forecast)
+    plt.ylabel('Cumulative Log Returns') #'Cumulative percent change (1.0=100%)'
     kraken_data, q25, q75 = macd(inst_data,crypt)
+    #Calculate MAPE of predicted to actual
+    forecast_test = final.predict(inst_data)
+    mape_error = abs(mean((abs(inst_data['y'].values - forecast_test['yhat'].values) / inst_data['y'].values) * 100))
     #check if macd is below the signal line
     # if inst_data['macd_diff'].iloc[-2] < inst_data['signal_line'].iloc[-2]:
     #     below_signal = True
@@ -160,12 +166,12 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     plt.plot(inst_data['ds'],inst_data['sma_2'],'b')
     add_changepoints_to_plot(fig2.gca(), mod, forecast)
     vola_percent = str(round(volatility_value*100,3))
-    inst_data = running_oeff_deter(inst_data)
+    kraken_data = running_coeff_deter(kraken_data)
     # str_combine = crypt + ' volatility: '+ vola_percent + ': change:' + str(changepoint_prior_scale) + ', season: ' + str(seasonality_prior_scale) +  ', error: ' + str(round(error,2)) + ', mode: ' + str(seasonality_mode) + ', holiday: ' + str(seasonality_prior_scale)
     # str_combine = crypt + ' volatility: '+ vola_percent + " 7 day variance: "+  str(round(inst_data['coeff_7_day'].iloc[-1]*100,3)) + '% ' +"30 day variance: "+ str(round(inst_data['coeff_30_day'].iloc[-1]*100,3)) + '% ' + ' error: ' + str(round(error,2))
-    day_7_var = str(round(inst_data['coeff_7_day'].iloc[-1]*100,3))
-    day_30_var = str(round(inst_data['coeff_30_day'].iloc[-1]*100,3))
-    str_combine = f'{crypt} | volatility: {vola_percent}% | 7 day variance: {day_7_var}% | 30 day variance: {day_30_var}% | error: {str(round(error_training,2))}%'
+    day_7_var = str(round(kraken_data['coeff_7_day'].iloc[-1]*100,3))
+    day_30_var = str(round(kraken_data['coeff_30_day'].iloc[-1]*100,3))
+    str_combine = f'{crypt} | volatility: {vola_percent}% | 7 day variance: {day_7_var}% | 30 day variance: {day_30_var}% | error: {str(round(mape_error,2))}%'
     # plt.text(inst_data['ds'].iloc[0], inst_data['y'].max()/2, str_combine, fontsize=10)
     plt.title(str_combine)
     #make and check directories
@@ -214,15 +220,15 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     # ax[1].set_ylim([min(sub_arr_low),max(sub_arr_up)])  
     ax[1].legend()
     ax[1].set_xlabel('TIME')
-    ax[1].set_ylabel('Price Values')
+    ax[1].set_ylabel('Cumulative Log Returns')
     ax[1].grid(True)
     #plot volatility
     # ax[2].hist(inst_data['log_return'], bins=50)
     # ax[2].set_xlabel('Log return')
     # ax[2].set_ylabel('frequency')
     title_2 = f'Volatility %: {vola_percent}'
-    plt.plot(inst_data['ds'],inst_data['coeff_7_day'],'r',label='coeff_7_day')
-    plt.plot(inst_data['ds'],inst_data['coeff_30_day'],'b',label='coeff_30_day')
+    plt.plot(kraken_data.index, kraken_data['coeff_7_day'],'r',label='coeff_7_day')
+    plt.plot(kraken_data.index, kraken_data['coeff_30_day'],'b',label='coeff_30_day')
     ax[2].legend()
     ax[2].set_xlabel('TIME')
     ax[2].set_ylabel('Proportion of the std to the mean')
@@ -246,7 +252,7 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     plt.plot(inst_data['ds'],inst_data['sma_2'],'b')
     fig.set_size_inches(8.5, 8.5)
     # a = add_changepoints_to_plot(fig.gca(), mod, forecast)
-    str_combine = 'change:' + str(changepoint_prior_scale) + ', season: ' + str(seasonality_prior_scale) +  ', error: ' + str(error)
+    # str_combine = 'change:' + str(changepoint_prior_scale) + ', season: ' + str(seasonality_prior_scale) +  ', error: ' + str(error)
     # plt.text(inst_data['ds'].iloc[0], inst_data['y'].max()/2, str_combine, fontsize=10)
     title_name = crypt +' last 3 months'
     plt.title(title_name)
@@ -271,14 +277,14 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     plt.savefig(final_dir,dpi=300)
     plt.close()
     # save_error = 0
-    return forecast, cross_point_buy, cross_point_sell, reg.coef_[0], error_training
+    return forecast, cross_point_buy, cross_point_sell, reg.coef_[0], mape_error
 
 def model_tuning(df,crypt):
     param_grid = {  
     'changepoint_prior_scale': arange(0.0001, 0.015, 0.005),
-    'seasonality_prior_scale': arange(0.01, 10, 1),
+    'seasonality_prior_scale': arange(0.01, 10, 2),
     'seasonality_mode': ['additive', 'multiplicative'],
-    'holidays_prior_scale': arange(0.01, 10, 1)
+    'holidays_prior_scale': arange(0.01, 10, 2)
     }
     
     # Generate all combinations of parameters
@@ -399,8 +405,8 @@ def tuning(df,train,test,params):
     m.add_country_holidays(country_name='US')
     m.fit(df)
     forecast_test = m.predict(df)
-    mape_values = mean((abs(df['y'].values - forecast_test['yhat'].values)
-                        / df['y'].values) * 100)
+    mape_values = abs(mean((abs(df['y'].values - forecast_test['yhat'].values)
+                        / df['y'].values) * 100))
     # m.fit(df.iloc[0:train])
     # forecast_test = m.predict(df.iloc[-test:-1]) #CHECK THIS I THINK ITS ALSO COMPARING THE FUTURE PREDICTIONS
     # mape_values = mean((abs(df['y'].iloc[-test:-1].values - forecast_test['yhat'].values)
@@ -439,7 +445,7 @@ def main():
                 change, season, error, season_mode, holiday = read_params(final_dir)
             forecast, cross_point_buy, cross_point_sell, reg_coef, error = model(df_data, 31, crypt, error, change, season, season_mode, holiday)
             #Regress predictions
-            if reg_coef > 0 and error < 200:
+            if reg_coef > 0 and error < 50:
                 # if cross_point == True:# and below_zero == True:
                 crypt_above_zero.append(crypt)
                 int_change.append(reg_coef)

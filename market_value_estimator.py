@@ -10,7 +10,7 @@ import os
 from pandas import DataFrame, read_csv
 import yfinance as yf
 from timeit import default_timer
-from numpy import nanmedian, nanmean, zeros
+from numpy import nanmedian, nanmean, zeros, log
 from tqdm import tqdm
 SET_PERIOD = 90
 def set_crypt_names():
@@ -27,9 +27,12 @@ def set_data(crypt):
     return history
 def percent_change(main_df,history,crypto,crypt_count):
     if len(history) >= SET_PERIOD:
-        temp_per_change = history[-SET_PERIOD:].pct_change()
+        # temp = log(inst_data['Close']/inst_data['Close'].shift(1))
+        # inst_data['log_return_sum'] = temp.cumsum()
+        # temp_per_change = history[-SET_PERIOD:].pct_change()
+        temp = log(history['Close']/history['Close'].shift(1))
         colum_title = f'{crypto}'
-        main_df[colum_title] = temp_per_change['Close'].cumsum()
+        main_df[colum_title] = temp[-SET_PERIOD:].cumsum()
         crypt_count+=1
         return main_df,crypt_count
     else:
@@ -38,9 +41,6 @@ def plot_all(main_df,crypt_count):
     rolling_mean = zeros(len(main_df))
     for i in range(len(main_df)):
         rolling_mean[i] = nanmedian(main_df.iloc[i])
-    main_df['rolling_median'] = rolling_mean
-    main_df['rolling_median_30'] = main_df['rolling_median'].rolling(21).mean()
-    main_df['rolling_median_14'] = main_df['rolling_median'].rolling(7).mean()
     plt.figure(figsize=(12, 10), dpi=350)
     for crypt in main_df.columns:
         plt.plot(main_df[crypt],'tab:gray')
@@ -49,15 +49,13 @@ def plot_all(main_df,crypt_count):
                     textcoords='offset points', 
                     text=crypt, va='center',fontsize=8)
     plt.plot(main_df.index,rolling_mean,linewidth=3,color='blue',label='2-week rolling median')
-    plt.plot(main_df.index,main_df['rolling_median_30'],linewidth=3,color='red',label=' 21 day rolling average of the median')
-    plt.plot(main_df.index,main_df['rolling_median_14'],linewidth=3,color='yellow',label='7 day rolling average of the median')
-    lower = nanmean(rolling_mean) - (nanmean(rolling_mean) * 9)
-    upper = abs(nanmean(rolling_mean) + (nanmean(rolling_mean) * 9))
+    lower = nanmean(rolling_mean) - (nanmean(rolling_mean) * 11)
+    upper = abs(nanmean(rolling_mean) + (nanmean(rolling_mean) * 11))
     plt.ylim([lower,upper])
-    set_title = f'Cumulative percent change across {SET_PERIOD} days on {crypt_count} cryptos'
+    set_title = f'Cumulative log returns across {SET_PERIOD} days on {crypt_count} cryptos'
     plt.title(set_title,fontweight='bold')
     plt.xlabel('TIME')
-    plt.ylabel('Cumulative Percent Change')
+    plt.ylabel('Cumulative Log Returns')
     plt.legend()
     direct = os.getcwd()
     name = 'full_market_trend.png'
