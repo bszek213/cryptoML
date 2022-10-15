@@ -25,6 +25,11 @@ import buy_sell_signals
 from datetime import datetime, timedelta
 from scipy.signal import savgol_filter
 warnings.filterwarnings("ignore")
+"""
+TODO: RUN DAYTRADING ANALYSIS ON CRYPTOS THAT HAVE A POSITIVE 24 CHANGE OR 
+TOP 10 PERFORMING CRYPTOS ACROSS 24 HOURS. TRY TO GET THE 5 AND 15 MIN
+INTERVALS TO WORK
+"""
 def input_arg():
     global sample_rate
     global input_crypt
@@ -136,6 +141,20 @@ def awesome_indicator(inst_data):
     #     per_change[i] = (inst_data['ao'].iloc[i] - inst_data['ao'].iloc[i-1]) / inst_data['ao'].iloc[i-1]
     # inst_data['ao_velocity'] = per_change
     # inst_data['ao_velocity'] = inst_data['ao_velocity'].rolling(10).mean()
+    return inst_data
+
+def aroon_ind(inst_data,lb=25):
+    """
+    AROON UP = [ 25 - PERIODS SINCE 25 PERIOD HIGH ] / 25 * [ 100 ]
+    AROON DOWN = [ 25 - PERIODS SINCE 25 PERIOD LOW ] / 25 * [ 100 ]
+    if up[i] >= 70 and down[i] <= 30: buy
+    if up[i] <= 30 and down[i] >= 70: sell
+    """
+    inst_data['aroon_up'] = 100 * ((inst_data.high.rolling(lb).apply(lambda x: x.argmax())) / lb)
+    inst_data['aroon_down'] = 100 * ((inst_data.low.rolling(lb).apply(lambda x: x.argmin())) / lb)
+    # q75, q25 = percentile(inst_data['aroon_up'].dropna().values, [75 ,25])
+    # lower_bound_buy = q25
+    # upper_bound_buy = q75
     return inst_data
 
 def VWMA(crypto_df):
@@ -312,6 +331,7 @@ def buy_find(inst_data,name):
     inst_data = VWMA(inst_data)
     inst_data = volume_osc(inst_data)
     inst_data = bollinger_band(inst_data)
+    inst_data = aroon_ind(inst_data)
     inst_data, coeff_OBV, reg_array, OBV_lower, OBV_upper, OBV_rval = OBV(inst_data)
     # inst_data['ewm20'] = inst_data['close'].ewm(span=20, min_periods=20).mean()
     inst_data['LR'] = reg_arr
@@ -325,8 +345,12 @@ def buy_find(inst_data,name):
         #TODO maybe add another condition where the closing price has to be above the LR line
         if ((inst_data['macd_diff'].iloc[o-1] < inst_data['signal_line'].iloc[o-1]) and
             (inst_data['macd_diff'].iloc[o] > inst_data['signal_line'].iloc[o]) and
-            (inst_data['Stoch_RSI'].iloc[o] > inst_data['Stoch_RSI'].iloc[o-2]) and
-            (inst_data['macd_diff'].iloc[o] < 0)
+            # (inst_data['Stoch_RSI'].iloc[o] > inst_data['Stoch_RSI'].iloc[o-2]) and
+            (inst_data['macd_diff'].iloc[o] < 0) and
+            # (inst_data['Stoch_RSI'].iloc[o] < lower_bound_buy) and # try this for daytrading
+            (inst_data['aroon_up'].iloc[o-1] < inst_data['aroon_up'].iloc[o]) and  # try this for daytrading
+            (inst_data['aroon_down'].iloc[o-1] > inst_data['aroon_down'].iloc[o]) and
+            (reg_half.coef_ > 0) #check for day trading
             # (inst_data['Stoch_RSI'].iloc[o] < upper_bound_buy)
             # (inst_data['VMWA_14'].iloc[o] > inst_data['VMWA_28'].iloc[o]) and
             # (inst_data['volume_os'].iloc[o] > 0) and
@@ -338,10 +362,10 @@ def buy_find(inst_data,name):
             # (inst_data['Stoch_RSI'].iloc[o] < lower_bound_buy) and 
             # open_pos == False
             ):
-            if ((inst_data['ewmshort'].iloc[o]) <= (inst_data['close'].iloc[o]) or
-            (inst_data['ewmlong'].iloc[o]) <= (inst_data['close'].iloc[o]) or
-            (inst_data['ewmmedium'].iloc[o]) <= (inst_data['close'].iloc[o])):
-                inst_data['buy'].iloc[o] = inst_data['close'].iloc[o]
+            # if ((inst_data['ewmshort'].iloc[o]) <= (inst_data['close'].iloc[o]) or
+            # (inst_data['ewmlong'].iloc[o]) <= (inst_data['close'].iloc[o]) or
+            # (inst_data['ewmmedium'].iloc[o]) <= (inst_data['close'].iloc[o])):
+            inst_data['buy'].iloc[o] = inst_data['close'].iloc[o]
                 # cross_buy= False
                 # for i in range(o-10,o):
                 #     if (inst_data['Stoch_RSI'].iloc[o] < lower_bound_buy):
@@ -352,8 +376,8 @@ def buy_find(inst_data,name):
                 #     cross_buy= False
                 # else:
                 #     inst_data['buy'].iloc[o] = nan
-            else:
-                inst_data['buy'].iloc[o] = nan
+            # else:
+            #     inst_data['buy'].iloc[o] = nan
         else:
             inst_data['buy'].iloc[o] = nan
         if ((inst_data['macd_diff'].iloc[o-1] > inst_data['signal_line'].iloc[o-1]) and
@@ -387,7 +411,7 @@ def buy_find(inst_data,name):
     inst_data.index = date_range_arr
     
     # fig, ax = plt.subplots(1,1,figsize=(10, 5), dpi=150) 
-    fig, ax = plt.subplots(5,1,figsize=(12, 15), dpi=250) 
+    fig, ax = plt.subplots(6,1,figsize=(12, 20)) 
     title_name = name + ' LR R-val: ' + str(rval) + ' LR_half: ' + str(reg_half.coef_)
     # LR and closing price plot
     ax[0].set_title(title_name)
@@ -400,8 +424,6 @@ def buy_find(inst_data,name):
     ax[0].plot(inst_data.index, inst_data['LR_half'], 'lime', label = 'LR_half')
     ax[0].scatter(inst_data.index, inst_data['buy'], marker='o', s=120, color = 'g', label = 'buy')
     ax[0].scatter(inst_data.index, inst_data['sell'], marker='o',s=120, color = 'k', label = 'sell')
-    ax[0].fill_between(inst_data.index, inst_data.upper_bound, inst_data.lower_bound, color='grey',
-                      alpha=0.4)
     ax[0].legend()
     ax[0].grid(True)
     #MACD PLOT
@@ -459,11 +481,26 @@ def buy_find(inst_data,name):
     ax[4].set_xlabel('iterations')
     ax[4].set_ylabel('volume_os Values')
     ax[4].grid(True)
+    #Bollinger band by itself
+    # ax[5].fill_between(inst_data.index, inst_data.upper_bound, inst_data.lower_bound, color='grey',
+    #                   alpha=0.4)
+    # ax[5].plot(inst_data.index,inst_data['close'],'tab:blue', marker="o",
+    #            markersize=1, linestyle='', label = 'Close Price')
+    ax[5].plot(inst_data.index,inst_data['aroon_up'],'tab:blue', marker="o",
+                markersize=1, linestyle='-', label = 'Aroon Up')
+    ax[5].plot(inst_data.index,inst_data['aroon_down'],'tab:red', marker="o",
+                markersize=1, linestyle='-', label = 'Aroon down')
+    ax[5].hlines(y = 30, xmin=inst_data.index[0], xmax=inst_data.index[-1])
+    ax[5].hlines(y = 70, xmin=inst_data.index[0], xmax=inst_data.index[-1])
+    ax[5].legend()
+    ax[5].set_xlabel('iterations')
+    ax[5].set_ylabel('Aroon indicator band')
+    ax[5].grid(True)
     save_name = name + '.svg'
     direct = getcwd()
     final_dir = join(direct, 'technical_analysis', save_name)
     plt.tight_layout()
-    plt.savefig(final_dir,dpi=300)
+    plt.savefig(final_dir,dpi=350)
     plt.close()
     try: 
         nearest_buy = find_closet_buy.index[-1]

@@ -28,16 +28,16 @@ python candlestick.py
 ## Top 10 performing Cryptos
 ```bash
    crypto    reg_coef  MACD_cross_buy  MACD_cross_sell
-9    COMP  0.114023           False            False
-13   DYDX  0.044125           False            False
-38    RLC  0.021846           False            False
-28   MANA  0.020544           False            False
-47    XTZ  0.019627           False            False
-16    FIS  0.019457           False            False
-37    REP  0.019036           False            False
-18   GALA  0.017427           False            False
-42   SCRT  0.012712           False            False
-17    FTM  0.011951           False            False
+9    COMP  0.114022           False            False
+13   DYDX  0.040668           False            False
+26   MANA  0.022182           False            False
+34    RLC  0.021478           False            False
+16    FIS  0.020069           False            False
+33    REP  0.018493           False            False
+43    XTZ  0.015438           False            False
+35   SAND  0.012131           False            False
+37   SCRT  0.012082           False            False
+17    FTM  0.011535           False            False
 ```
 ## Candlestick Results
 run candlestick analysis before 5pm PDT, as the sample rates are on UTC time. The
