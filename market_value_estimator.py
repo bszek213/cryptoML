@@ -10,9 +10,10 @@ import os
 from pandas import DataFrame, read_csv
 import yfinance as yf
 from timeit import default_timer
-from numpy import nanmedian, nanmean, zeros, log
+from numpy import nanmedian, zeros, log, array, nan, arange
 from tqdm import tqdm
-SET_PERIOD = 90
+from sklearn.linear_model import LinearRegression
+SET_PERIOD = 365
 def set_crypt_names():
     location = os.getcwd()
     df = read_csv(os.path.join(location,'crypto_trade_min.csv'))
@@ -41,18 +42,32 @@ def plot_all(main_df,crypt_count):
     rolling_mean = zeros(len(main_df))
     for i in range(len(main_df)):
         rolling_mean[i] = nanmedian(main_df.iloc[i])
-    plt.figure(figsize=(12, 10), dpi=350)
+    #calc linear regress
+    a_list = list(arange(0,len(rolling_mean)))
+    X1 = array(a_list)
+    X = X1.reshape(-1, 1)
+    reg = LinearRegression().fit(X, rolling_mean) #maybe change this to X, main_df.dropna(axis=1)
+    reg_arr = zeros(len(rolling_mean))
+    for i in X1:
+        reg_arr[i] = (reg.coef_ * i) + reg.intercept_
+    reg_arr = [nan if x == 0 else x for x in reg_arr]
+    plt.figure(figsize=(15, 10))
     for crypt in main_df.columns:
-        plt.plot(main_df[crypt],'tab:gray')
-        plt.annotate(xy=(main_df[crypt].index[-1],main_df[crypt].iloc[-1]),
-                    xytext=(5,0),
-                    textcoords='offset points', 
-                    text=crypt, va='center',fontsize=8)
-    plt.plot(main_df.index,rolling_mean,linewidth=3,color='blue',label='2-week rolling median')
-    lower = nanmean(rolling_mean) - (nanmean(rolling_mean) * 11)
-    upper = abs(nanmean(rolling_mean) + (nanmean(rolling_mean) * 11))
-    plt.ylim([lower,upper])
-    set_title = f'Cumulative log returns across {SET_PERIOD} days on {crypt_count} cryptos'
+        if main_df[crypt].isna().sum() < 3:
+            plt.plot(main_df[crypt],'tab:gray')
+            plt.annotate(xy=(main_df[crypt].index[-1],main_df[crypt].iloc[-1]),
+                        xytext=(5,0),
+                        textcoords='offset points', 
+                        text=crypt, va='center',fontsize=8)
+    plt.plot(main_df.index,rolling_mean,linewidth=3,color='blue',label='median')
+    plt.plot(main_df.index,reg_arr,linewidth=3,color='red',label='linear regression')
+    # lower = nanmean(rolling_mean) - (nanmean(rolling_mean) * 13)
+    # upper = abs(nanmean(rolling_mean) + (nanmean(rolling_mean) * 13))
+    # q3, q1 = percentile(rolling_mean, [75 ,25])
+    # print(abs(q3)*5)
+    # print(q1*5)
+    # plt.ylim([lower,upper])
+    set_title = f'Cumulative log returns across {SET_PERIOD} days on {crypt_count} cryptos, linearCoeff {round(reg.coef_[0],4)}'
     plt.title(set_title,fontweight='bold')
     plt.xlabel('TIME')
     plt.ylabel('Cumulative Log Returns')
