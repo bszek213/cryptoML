@@ -67,7 +67,8 @@ def plot_all(main_df,crypt_count):
         os.mkdir(check_folder)
         final_dir = os.path.join(check_folder, name)
     plt.tight_layout()
-    plt.savefig(final_dir,dpi=350)
+    plt.show()
+    plt.savefig(final_dir,dpi=300)
     plt.close()
 def main():
     start = default_timer()
