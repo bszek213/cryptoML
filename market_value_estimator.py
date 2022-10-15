@@ -12,7 +12,7 @@ import yfinance as yf
 from timeit import default_timer
 from numpy import nanmedian, nanmean, zeros, log
 from tqdm import tqdm
-SET_PERIOD = 90
+SET_PERIOD = 60
 def set_crypt_names():
     location = os.getcwd()
     df = read_csv(os.path.join(location,'crypto_trade_min.csv'))
@@ -49,8 +49,8 @@ def plot_all(main_df,crypt_count):
                     textcoords='offset points', 
                     text=crypt, va='center',fontsize=8)
     plt.plot(main_df.index,rolling_mean,linewidth=3,color='blue',label='2-week rolling median')
-    lower = nanmean(rolling_mean) - (nanmean(rolling_mean) * 11)
-    upper = abs(nanmean(rolling_mean) + (nanmean(rolling_mean) * 11))
+    lower = nanmean(rolling_mean) - (nanmean(rolling_mean) * 15)
+    upper = abs(nanmean(rolling_mean) + (nanmean(rolling_mean) * 15))
     plt.ylim([lower,upper])
     set_title = f'Cumulative log returns across {SET_PERIOD} days on {crypt_count} cryptos'
     plt.title(set_title,fontweight='bold')
