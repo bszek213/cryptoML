@@ -32,12 +32,14 @@ class technical():
         api = krakenex.API()
         api.load_key('key.txt')
         self.kraken = KrakenAPI(api)
+        self.total_trades = 0
     def readin_cryptos(self):
         direct = getcwd()
         location = join(direct, 'crypto_trade_min_kraken.csv')
         self.crypto_list = read_csv(location)
         print(f'number of cryptos monitoring: {len(self.crypto_list)}')
     def get_24_above_zero(self):
+        #TODO: change the difference to linear regression
         total_samples = 24*SAMPLE_RATE
         save_positive = []
         self.readin_cryptos()
@@ -124,7 +126,7 @@ class technical():
         self.volatility_value = self.data['log_return'].std()*len(self.data)**0.5 #365 days of trading square root
         self.coef_variation = self.data['log_return'].std() / self.data['log_return'].mean()
     def plot(self,name):
-        fig, ax = plt.subplots(3,1,figsize=(12, 20)) 
+        fig, ax = plt.subplots(4,1,figsize=(12, 20)) 
         #plot close price
         str_name = f'{name} : {round(self.coef_variation,4)}% coeff of variation'
         ax[0].set_title(str_name)
@@ -160,6 +162,15 @@ class technical():
         ax[2].set_xlabel('iterations')
         ax[2].set_ylabel('RSI Values')
         ax[2].grid(True)
+        #aroon
+        ax[3].plot(self.data.index, self.data['aroon_up'], 'r', marker="o", markersize=2, 
+                   linestyle='-',linewidth= 0.25, label = 'aroon_up')
+        ax[3].plot(self.data.index, self.data['aroon_down'], 'b', marker="o", markersize=2, 
+                   linestyle='-',linewidth= 0.25, label = 'aroon_down')
+        ax[3].legend()
+        ax[3].set_xlabel('iterations')
+        ax[3].set_ylabel('aroon')
+        ax[3].grid(True)
         save_name = name + '.svg'
         direct = getcwd()
         final_dir = join(direct, 'technical_analysis', save_name)
@@ -173,8 +184,12 @@ class technical():
             if ((self.data['macd_diff'].iloc[o-1] < self.data['signal_line'].iloc[o-1]) and
                 (self.data['macd_diff'].iloc[o] > self.data['signal_line'].iloc[o]) and
                 (self.data['macd_diff'].iloc[o] < 0) and
-                (self.data['RSI'].iloc[o] < self.q25) and 
-                (self.data['macd_diff'].iloc[o] < self.q25_macd)):
+                (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) and 
+                (self.data['RSI'].iloc[o] < self.q75) and
+                (self.data['macd_diff'].iloc[o] < self.q25_macd) and
+                (self.data['aroon_up'].iloc[o-1] < self.data['aroon_up'].iloc[o]) and 
+                (self.data['aroon_down'].iloc[o-1] > self.data['aroon_down'].iloc[o])
+                ):
                 # if ((self.data['ewmshort'].iloc[o]) <= (self.data['close'].iloc[o]) or
                 #     (self.data['ewmlong'].iloc[o]) <= (self.data['close'].iloc[o]) or
                 #     (self.data['ewmmedium'].iloc[o]) <= (self.data['close'].iloc[o])):
@@ -187,6 +202,7 @@ class technical():
         files = glob(join(getcwd(),'technical_analysis','*'))
         for f in files:
             remove(f)
+        save_hist = []
         for name in tqdm(pos_crypt):
             self.get_ohlc(name)
             self.macd()
@@ -194,11 +210,14 @@ class technical():
             self.aroon_ind()
             self.moving_averages()
             self.volatility()
+            save_hist.append(self.coef_variation)
             self.buy()
             self.plot(name)
             sleep(1)
+        plt.figure()
+        plt.hist(save_hist,bins=20)
+        plt.show()
 def main():
-    class_obj = technical()
-    class_obj.run_analysis_pos_crypt()
+    technical().run_analysis_pos_crypt()
 if __name__ == "__main__":
     main()

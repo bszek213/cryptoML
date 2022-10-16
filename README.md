@@ -46,5 +46,5 @@ new "day" will start then.
 ETC bullish - inverted hammer  pattern
 ```
 ## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.l
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
