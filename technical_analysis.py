@@ -40,16 +40,18 @@ class technical():
         print(f'number of cryptos monitoring: {len(self.crypto_list)}')
     def get_24_above_zero(self):
         #TODO: change the difference to linear regression
-        total_samples = 24*SAMPLE_RATE
+        # total_samples = 24*SAMPLE_RATE
         save_positive = []
         self.readin_cryptos()
         for name in tqdm(self.crypto_list['crypto']):
             try:
                 update_name = name + 'USD'
                 self.get_ohlc(update_name)
-                prev_24 = self.data.close.iloc[-total_samples]
-                current = self.data.close.iloc[-1]
-                if (current - prev_24 > 0):
+                # prev_24 = self.data.close.iloc[-total_samples]
+                # current = self.data.close.iloc[-1]
+                self.half_LR()
+                # self.volatility()
+                if (self.reg_coef > 0): #add coeff variation here
                     save_positive.append(update_name)
                 sleep(1) #I have to do this or I get gated
             except:
@@ -84,6 +86,18 @@ class technical():
                 break
         # self.ohlc_no_param = ohlc[0]
         self.data = ohlc[0] 
+    def half_LR(self):
+        data_len = int((24*60)/SAMPLE_RATE) #get samples out of 24 hours
+         # = total_samples #last 30 days + the 30 day prediction
+        a_list = list(arange(len(self.data)-data_len,len(self.data)))
+        X1 = array(a_list)
+        X = X1.reshape(-1, 1)
+        reg = LinearRegression().fit(X, self.data['close'].iloc[-data_len-1:-1].values)
+        self.reg_arr_half = zeros(len(self.data['close']))
+        for i in X1:
+            self.reg_arr_half[i] = (reg.coef_ * i) + reg.intercept_
+        self.reg_arr_half = [nan if x == 0 else x for x in self.reg_arr_half]
+        self.reg_coef = reg.coef_
     def macd(self):
         self.data['sma_1'] = self.data['close'].ewm(span=26,
                           min_periods=26-1).mean()
@@ -132,6 +146,7 @@ class technical():
         ax[0].set_title(str_name)
         ax[0].plot(self.data.index,self.data['close'],'tab:blue', marker="o",
                markersize=1, linestyle='', label = 'Close Price')
+        ax[0].plot(self.data.index,self.reg_arr_half,'tab:orange',label = 'linearRegressor')
         ax[0].plot(self.data.index, self.data['ewmlong'], 'black', label = 'long-200')
         ax[0].plot(self.data.index, self.data['ewmshort'], 'crimson', label = 'short-128')
         ax[0].plot(self.data.index, self.data['ewmmedium'], 'green', label = 'medium-25')
@@ -181,14 +196,17 @@ class technical():
         self.data['buy'] = empty(len(self.data))
         self.data['buy'].iloc[:] = nan
         for o in range(len(self.data)): 
-            if ((self.data['macd_diff'].iloc[o-1] < self.data['signal_line'].iloc[o-1]) and
-                (self.data['macd_diff'].iloc[o] > self.data['signal_line'].iloc[o]) and
-                (self.data['macd_diff'].iloc[o] < 0) and
+            if (#(self.data['macd_diff'].iloc[o-1] < self.data['signal_line'].iloc[o-1]) and
+                #(self.data['macd_diff'].iloc[o] > self.data['signal_line'].iloc[o]) and
+                #(self.data['macd_diff'].iloc[o] < self.q25_macd) and
+                # (self.data['macd_diff'].iloc[o] < 0) and
+                # (self.data['aroon_down'].iloc[o-1] > self.data['aroon_down'].iloc[o])
+                # (self.data['macd_diff'].iloc[o-1] < self.data['macd_diff'].iloc[o]) and
+                # (self.data['aroon_up'].iloc[o-1] < self.data['aroon_up'].iloc[o])
+                (self.data['ewmshort'].iloc[o-1] < self.data['ewmlong'].iloc[o-1]) and
+                (self.data['ewmshort'].iloc[o] > self.data['ewmlong'].iloc[o]) and
                 (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) and 
-                (self.data['RSI'].iloc[o] < self.q75) and
-                (self.data['macd_diff'].iloc[o] < self.q25_macd) and
-                (self.data['aroon_up'].iloc[o-1] < self.data['aroon_up'].iloc[o]) and 
-                (self.data['aroon_down'].iloc[o-1] > self.data['aroon_down'].iloc[o])
+                (self.data['RSI'].iloc[o] < self.q75)
                 ):
                 # if ((self.data['ewmshort'].iloc[o]) <= (self.data['close'].iloc[o]) or
                 #     (self.data['ewmlong'].iloc[o]) <= (self.data['close'].iloc[o]) or
@@ -209,13 +227,14 @@ class technical():
             self.RSI()
             self.aroon_ind()
             self.moving_averages()
+            self.half_LR()
             self.volatility()
-            save_hist.append(self.coef_variation)
             self.buy()
             self.plot(name)
+            save_hist.append(self.coef_variation)
             sleep(1)
         plt.figure()
-        plt.hist(save_hist,bins=20)
+        plt.hist(save_hist,bins=60)
         plt.show()
 def main():
     technical().run_analysis_pos_crypt()
