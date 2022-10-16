@@ -141,6 +141,7 @@ class technical():
         self.coef_variation = self.data['log_return'].std() / self.data['log_return'].mean()
     def plot(self,name):
         fig, ax = plt.subplots(4,1,figsize=(12, 20)) 
+        indx = self.data['buy'].notnull()
         #plot close price
         str_name = f'{name} : {round(self.coef_variation,4)}% coeff of variation'
         ax[0].set_title(str_name)
@@ -150,7 +151,10 @@ class technical():
         ax[0].plot(self.data.index, self.data['ewmlong'], 'black', label = 'long-200')
         ax[0].plot(self.data.index, self.data['ewmshort'], 'crimson', label = 'short-128')
         ax[0].plot(self.data.index, self.data['ewmmedium'], 'green', label = 'medium-25')
-        ax[0].scatter(self.data.index, self.data['buy'], marker='o', s=120, color = 'g', label = 'buy')
+        # ax[0].scatter(self.data.index, self.data['buy'], marker='o', s=120, color = 'g', label = 'buy')
+        ax[0].vlines(x=self.data.index[indx],
+                     ymin=min(self.data['close'].values),
+                     ymax= max(self.data['close'].values),color='g',label='buy')
         ax[0].legend()
         ax[0].grid(True)
         ax[0].set_xlabel('iterations')
@@ -162,6 +166,9 @@ class technical():
                         markersize=1, linestyle='-', label = 'signal line')
         ax[1].fill_between(self.data.index, self.q75_macd, self.q25_macd, color='green',
                           alpha=0.2,label='IQR range MACD')
+        ax[1].vlines(x=self.data.index[indx],
+                     ymin=min(self.data['macd_diff'].values),
+                     ymax= max(self.data['macd_diff'].values),color='g')
         ax[1].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
         ax[1].legend()
         ax[1].grid(True)
@@ -173,6 +180,9 @@ class technical():
                    linewidth= 0.25, label = 'RSI')
         ax[2].hlines(y = self.q25, xmin=self.data.index[0], xmax=self.data.index[-1])
         ax[2].hlines(y = self.q75, xmin=self.data.index[0], xmax=self.data.index[-1])
+        ax[2].vlines(x=self.data.index[indx],
+                     ymin=min(self.data['RSI'].values),
+                     ymax= max(self.data['RSI'].values),color='g')
         ax[2].legend()
         ax[2].set_xlabel('iterations')
         ax[2].set_ylabel('RSI Values')
@@ -182,6 +192,9 @@ class technical():
                    linestyle='-',linewidth= 0.25, label = 'aroon_up')
         ax[3].plot(self.data.index, self.data['aroon_down'], 'b', marker="o", markersize=2, 
                    linestyle='-',linewidth= 0.25, label = 'aroon_down')
+        ax[3].vlines(x=self.data.index[indx],
+                     ymin=min(self.data['aroon_up'].values),
+                     ymax= max(self.data['aroon_up'].values),color='g')
         ax[3].legend()
         ax[3].set_xlabel('iterations')
         ax[3].set_ylabel('aroon')
@@ -203,10 +216,10 @@ class technical():
                 # (self.data['aroon_down'].iloc[o-1] > self.data['aroon_down'].iloc[o])
                 # (self.data['macd_diff'].iloc[o-1] < self.data['macd_diff'].iloc[o]) and
                 # (self.data['aroon_up'].iloc[o-1] < self.data['aroon_up'].iloc[o])
+                # (self.data['RSI'].iloc[o] < self.q75)
                 (self.data['ewmshort'].iloc[o-1] < self.data['ewmlong'].iloc[o-1]) and
                 (self.data['ewmshort'].iloc[o] > self.data['ewmlong'].iloc[o]) and
-                (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) and 
-                (self.data['RSI'].iloc[o] < self.q75)
+                (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) 
                 ):
                 # if ((self.data['ewmshort'].iloc[o]) <= (self.data['close'].iloc[o]) or
                 #     (self.data['ewmlong'].iloc[o]) <= (self.data['close'].iloc[o]) or
