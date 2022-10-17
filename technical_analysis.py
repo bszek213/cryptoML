@@ -142,8 +142,8 @@ class technical():
         self.coef_variation = self.data['log_return'].std() / self.data['log_return'].mean()
     def plot(self,name):
         fig, ax = plt.subplots(4,1,figsize=(12, 20)) 
-        indx_buy = self.data['buy'].notnull()
-        indx_sell = self.data['sell'].notnull()
+        buy_df = self.data[~self.data['buy'].isnull()]
+        sell_df = self.data[~self.data['sell'].isnull()]
         #plot close price
         str_name = f'{name} : {round(self.coef_variation,4)}% coeff of variation'
         ax[0].set_title(str_name)
@@ -172,8 +172,8 @@ class technical():
                         markersize=1, linestyle='-', label = 'signal line')
         ax[1].fill_between(self.data.index, self.q75_macd, self.q25_macd, color='green',
                           alpha=0.2,label='IQR range MACD')
-        ax[0].scatter(self.data.index.iloc[indx_buy], self.data['macd_diff'].iloc[indx_buy], marker='o', s=120, color = 'g', label = 'buy')
-        ax[0].scatter(self.data.index.iloc[indx_sell], self.data['macd_diff'].iloc[indx_sell], marker='o', s=120, color = 'r', label = 'sell')
+        ax[1].scatter(buy_df.index, buy_df['macd_diff'], marker='o', s=120, color = 'g', label = 'buy')
+        ax[1].scatter(sell_df.index, sell_df['macd_diff'], marker='o', s=120, color = 'r', label = 'sell')
         # ax[1].vlines(x=self.data.index[indx],
         #              ymin=min(self.data['macd_diff'].values),
         #              ymax= max(self.data['macd_diff'].values),color='g')
