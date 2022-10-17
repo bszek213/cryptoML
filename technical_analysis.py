@@ -10,7 +10,7 @@ limit to 5-10 trades a day
 from sklearn.linear_model import LinearRegression
 import krakenex
 from pykrakenapi import KrakenAPI
-from numpy import array, zeros, nan, arange, percentile, empty, log
+from numpy import array, zeros, nan, arange, percentile, empty, log, mean
 from time import sleep
 # import argparse
 from os import path, getcwd, listdir, remove, mkdir
@@ -40,8 +40,6 @@ class technical():
         self.crypto_list = read_csv(location)
         print(f'number of cryptos monitoring: {len(self.crypto_list)}')
     def get_24_above_zero(self):
-        #TODO: change the difference to linear regression
-        # total_samples = 24*SAMPLE_RATE
         save_positive = []
         self.readin_cryptos()
         for name in tqdm(self.crypto_list['crypto']):
@@ -99,6 +97,15 @@ class technical():
             self.reg_arr_half[i] = (reg.coef_ * i) + reg.intercept_
         self.reg_arr_half = [nan if x == 0 else x for x in self.reg_arr_half]
         self.reg_coef = reg.coef_
+    def awesome_indicator(self):
+        self.data['median_price'] = (self.data['high'] + self.data['low']) / 2
+        self.data['long_ao'] = self.data['median_price'].rolling(34,
+                         min_periods=34-1).mean()
+        self.data['short_ao'] = self.data['median_price'].rolling(5,
+                         min_periods=5-1).mean()
+        self.data['ao'] = self.data['short_ao'] - self.data['long_ao']
+        self.q75_ao, self.q25_ao = percentile(self.data['ao'].dropna().values, 
+                                    [75 ,25])
     def macd(self):
         self.data['sma_1'] = self.data['close'].ewm(span=26,
                           min_periods=26-1).mean()
@@ -123,6 +130,9 @@ class technical():
         self.data['RSI'] = 100 - (100/(1+self.data.RS))
         #calculate the percentile
         self.q75, self.q25 = percentile(self.data['RSI'].dropna().values, [75 ,25])
+        #calculate an upper bound: Q3 + .2 *IQR
+        self.RSI_upper_bound = self.q75 + (.1*(self.q75-self.q25))
+        
     def moving_averages(self):
         self.data['ewmshort'] = self.data['close'].ewm(span=25, min_periods=25).mean() #used to be 50
         self.data['ewmmedium'] = self.data['close'].ewm(span=128, min_periods=128).mean()
@@ -145,7 +155,7 @@ class technical():
         buy_df = self.data[~self.data['buy'].isnull()]
         sell_df = self.data[~self.data['sell'].isnull()]
         #plot close price
-        str_name = f'{name} : {round(self.coef_variation,4)}% coeff of variation'
+        str_name = f'{name} : {round(self.coef_variation,4)} coeff of variation'
         ax[0].set_title(str_name)
         ax[0].plot(self.data.index,self.data['close'],'tab:blue', marker="o",
                markersize=1, linestyle='', label = 'Close Price')
@@ -166,7 +176,7 @@ class technical():
         ax[0].set_xlabel('iterations')
         ax[0].set_ylabel('Close Price')
         #plot macd
-        ax[1].plot(self.data.index, self.data['macd_diff'], 'tab:green', marker="o",
+        ax[1].plot(self.data.index, self.data['macd_diff'], 'tab:blue', marker="o",
                         markersize=1, linestyle='-', label = 'macd diff')
         ax[1].plot(self.data.index, self.data['signal_line'], 'tab:red', marker="o",
                         markersize=1, linestyle='-', label = 'signal line')
@@ -187,7 +197,10 @@ class technical():
                    linestyle='-',
                    linewidth= 0.25, label = 'RSI')
         ax[2].hlines(y = self.q25, xmin=self.data.index[0], xmax=self.data.index[-1])
-        ax[2].hlines(y = self.q75, xmin=self.data.index[0], xmax=self.data.index[-1])
+        ax[2].hlines(y = self.q75, xmin=self.data.index[0], xmax=self.data.index[-1]) 
+        ax[2].hlines(y = self.RSI_upper_bound, xmin=self.data.index[0], xmax=self.data.index[-1])
+        ax[2].scatter(buy_df.index, buy_df['RSI'], marker='o', s=120, color = 'g', label = 'buy')
+        ax[2].scatter(sell_df.index, sell_df['RSI'], marker='o', s=120, color = 'r', label = 'sell')
         # ax[2].vlines(x=self.data.index[indx],
         #              ymin=min(self.data['RSI'].values),
         #              ymax= max(self.data['RSI'].values),color='g')
@@ -195,17 +208,20 @@ class technical():
         ax[2].set_xlabel('iterations')
         ax[2].set_ylabel('RSI Values')
         ax[2].grid(True)
-        #aroon
-        ax[3].plot(self.data.index, self.data['aroon_up'], 'r', marker="o", markersize=2, 
-                   linestyle='-',linewidth= 0.25, label = 'aroon_up')
-        ax[3].plot(self.data.index, self.data['aroon_down'], 'b', marker="o", markersize=2, 
-                   linestyle='-',linewidth= 0.25, label = 'aroon_down')
+        #ao indicator
+        ax[3].plot(self.data.index, self.data['ao'], 'r', marker="o", markersize=2, 
+                   linestyle='-',linewidth= 0.25, label = 'awesome_indicator')
+        ax[3].scatter(buy_df.index, buy_df['ao'], marker='o', s=120, color = 'g', label = 'buy')
+        ax[3].scatter(sell_df.index, sell_df['ao'], marker='o', s=120, color = 'r', label = 'sell')
+        ax[3].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
+        ax[3].fill_between(self.data.index, self.q75_ao, self.q25_ao, color='green',
+                          alpha=0.2,label='IQR range AO')
         # ax[3].vlines(x=self.data.index[indx],
         #              ymin=min(self.data['aroon_up'].values),
         #              ymax= max(self.data['aroon_up'].values),color='g')
         ax[3].legend()
         ax[3].set_xlabel('iterations')
-        ax[3].set_ylabel('aroon')
+        ax[3].set_ylabel('Awesome Indicator')
         ax[3].grid(True)
         save_name = name + '.svg'
         direct = getcwd()
@@ -223,6 +239,8 @@ class technical():
         self.buy_for_trading = 0
         thresh_buy = 0
         thresh_sell = 0
+        count_hold_iter = 0
+        self.save_time_hold = []
         for o in range(len(self.data)): 
             if (#(self.data['macd_diff'].iloc[o-1] < self.data['signal_line'].iloc[o-1]) and
                 #(self.data['macd_diff'].iloc[o] > self.data['signal_line'].iloc[o]) and
@@ -232,52 +250,65 @@ class technical():
                 # (self.data['macd_diff'].iloc[o-1] < self.data['macd_diff'].iloc[o]) and
                 # (self.data['aroon_up'].iloc[o-1] < self.data['aroon_up'].iloc[o])
                 # (self.data['RSI'].iloc[o] < self.q75)
+                # (self.data['macd_diff'].iloc[o-1] < self.data['macd_diff'].iloc[o]) and
                 (self.data['ewmshort'].iloc[o-1] < self.data['ewmlong'].iloc[o-1]) and
                 (self.data['ewmshort'].iloc[o] > self.data['ewmlong'].iloc[o]) and
-                (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o])
-                ):
-                # if ((self.data['ewmshort'].iloc[o]) <= (self.data['close'].iloc[o]) or
-                #     (self.data['ewmlong'].iloc[o]) <= (self.data['close'].iloc[o]) or
-                #     (self.data['ewmmedium'].iloc[o]) <= (self.data['close'].iloc[o])):
+                (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) and
+                (self.data['ao'].iloc[o] < 0) and
+                (self.data['macd_diff'].iloc[o] < self.q75_macd) and
+                (self.coef_variation > 18.75) and 
+                (self.coef_variation < 60.35) #use the values that are calculated at the end
+                ):  
                     self.buy_for_trading = self.data['close'].iloc[o]
                     if open_trade == True:
                         self.data['buy'].iloc[o] = self.data['close'].iloc[o]
                         buy_price = self.data['close'].iloc[o]
                         thresh_buy = buy_price + (buy_price * 0.0085)
                         thresh_sell = buy_price - (buy_price * (1.5*0.0085))
+                        count_hold_iter = 0
                         open_trade = False
+            if (open_trade == False):
+                count_hold_iter +=1
             if ((open_trade == False) and (thresh_buy < self.data['close'].iloc[o])):
                 self.data['sell'].iloc[o] = self.data['close'].iloc[o]
                 self.cumlative_gained += ((self.data['close'].iloc[o] - buy_price) / buy_price)*100
+                self.save_time_hold.append(count_hold_iter)
                 open_trade = True
             if ((open_trade == False) and (thresh_sell > self.data['close'].iloc[o])):
                 self.data['sell'].iloc[o] = self.data['close'].iloc[o]
                 self.cumlative_gained += ((self.data['close'].iloc[o] - buy_price) / buy_price)*100
                 open_trade = True
-
     def run_analysis_pos_crypt(self):
         pos_crypt = self.get_24_above_zero()
         files = glob(join(getcwd(),'technical_analysis','*'))
         for f in files:
             remove(f)
         save_hist = []
+        save_hold_time_temp = []
         for name in tqdm(pos_crypt):
             self.get_ohlc(name)
             self.macd()
             self.RSI()
             self.aroon_ind()
             self.moving_averages()
+            self.awesome_indicator()
             self.half_LR()
             self.volatility()
             self.trade()
             self.plot(name)
             save_hist.append(self.coef_variation)
-            print(f'cumulative gain {self.cumlative_gained} after running {name}')
+            save_hold_time_temp.append(self.save_time_hold)
+            print(f'cumulative gain {round(self.cumlative_gained,4)}% after running {name}')
             sleep(1)
-        plt.figure()
-        plt.hist(save_hist,bins=100)
-        plt.show()
-        print(f'backtest gain: {self.cumlative_gained}')
+        # plt.figure()
+        # plt.hist(save_hist,bins=100)
+        # plt.show()
+        # print(save_hold_time_temp)
+        coeff_var_75, coeff_var_25 = percentile(save_hist, 
+                                    [75 ,25])
+        print(f'LB {coeff_var_25} : UP {coeff_var_75}')
+        iter_hold_pos = mean([item for sublist in save_hold_time_temp for item in sublist])
+        print(iter_hold_pos * SAMPLE_RATE, 'minutes held')
 def main():
     technical().run_analysis_pos_crypt()
 if __name__ == "__main__":
