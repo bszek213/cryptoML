@@ -10,16 +10,16 @@ limit to 5-10 trades a day
 from sklearn.linear_model import LinearRegression
 import krakenex
 from pykrakenapi import KrakenAPI
-from numpy import array, zeros, nan, arange, percentile, empty, log, mean
+from numpy import array, zeros, nan, arange, percentile, empty, log, median
 from time import sleep
 # import argparse
-from os import path, getcwd, listdir, remove, mkdir
+from os import getcwd, remove
 from pandas import DataFrame, read_csv
 # from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 from os.path import join
 import warnings
-from buy_sell_signals import buy_signal_hft
+from buy_sell_signals import buy_signal_hft,basic_sell
 # from datetime import datetime, timedelta
 # from scipy.signal import savgol_filter
 from tqdm import tqdm
@@ -199,7 +199,7 @@ class technical():
                    linewidth= 0.25, label = 'RSI')
         ax[2].hlines(y = self.q25, xmin=self.data.index[0], xmax=self.data.index[-1])
         ax[2].hlines(y = self.q75, xmin=self.data.index[0], xmax=self.data.index[-1]) 
-        ax[2].hlines(y = self.RSI_upper_bound, xmin=self.data.index[0], xmax=self.data.index[-1])
+        # ax[2].hlines(y = self.RSI_upper_bound, xmin=self.data.index[0], xmax=self.data.index[-1])
         ax[2].scatter(buy_df.index, buy_df['RSI'], marker='o', s=120, color = 'g', label = 'buy')
         ax[2].scatter(sell_df.index, sell_df['RSI'], marker='o', s=120, color = 'r', label = 'sell')
         # ax[2].vlines(x=self.data.index[indx],
@@ -259,11 +259,11 @@ class technical():
                 (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) and
                 (self.data['ao'].iloc[o] < 0) and
                 (self.data['macd_diff'].iloc[o] < self.q75_macd) and
-                (self.coef_variation > 18.75) and 
-                (self.coef_variation < 60.35) #use the values that are calculated at the end
-                ):  
+                (self.coef_variation > self.lb_coef_deter) and 
+                (self.coef_variation < self.ub_coef_deter) #use the values that are calculated at the end
+                ):
                     self.buy_for_trading = o
-                    self.data['buy_no_condition'] = self.data['close'].iloc[o]
+                    self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
                     if open_trade == True:
                         self.data['buy'].iloc[o] = self.data['close'].iloc[o]
                         buy_price = self.data['close'].iloc[o]
@@ -283,7 +283,7 @@ class technical():
                 self.cumlative_gained += ((self.data['close'].iloc[o] - buy_price) / buy_price)*100
                 open_trade = True
     def live_trading(self,name):
-        if len(self.data) - self.buy_for_trading < 2:
+        if len(self.data) - self.buy_for_trading <= 2:
             print(f'buy {name}')
             #put a buy function here : ad save the thresh and time? 
             old_name = name.replace('USD','')
@@ -291,6 +291,8 @@ class technical():
             volume_inst = ind_cryp_t['Order'].values
             balance = self.kraken.get_account_balance()
             _, ask_price , _ = buy_signal_hft(name, self.kraken, volume_inst, balance.vol['ZUSD'])
+            threshold = ask_price + (ask_price * 0.0085)
+            count_iter_hold = 0
             while True:
                 self.get_ohlc(name)
                 self.macd()
@@ -302,41 +304,59 @@ class technical():
                 self.volatility()
                 self.trade()
                 self.plot(name)
-                sleep(SAMPLE_RATE)
-    def check_sell(self):
-        pass
+                self.check_sell(name, volume_inst, ask_price, threshold, count_iter_hold)
+                count_iter_hold+=1
+                sleep(SAMPLE_RATE*60)
+    def check_sell(self,name,volume_inst,ask_price,threshold,count_iter_hold):
+        curr_ask = float((self.kraken.get_ticker_information(name))['a'][0][0])
+        print(f'current ask: {curr_ask} : {threshold} threshold')
+        if  (threshold < curr_ask):
+            balance = self.kraken.get_account_balance()
+            basic_sell(name, self.kraken, volume_inst, balance)
+        if count_iter_hold > self.average_pos_hold:
+            balance = self.kraken.get_account_balance()
+            basic_sell(name, self.kraken, volume_inst, balance)
     def run_analysis_pos_crypt(self):
-        pos_crypt = self.get_24_above_zero()
-        files = glob(join(getcwd(),'technical_analysis','*'))
-        for f in files:
-            remove(f)
-        save_hist = []
-        save_hold_time_temp = []
-        for name in tqdm(pos_crypt):
-            self.get_ohlc(name)
-            self.macd()
-            self.RSI()
-            self.aroon_ind()
-            self.moving_averages()
-            self.awesome_indicator()
-            self.half_LR()
-            self.volatility()
-            self.trade()
-            self.plot(name)
-            self.live_trading(name)
-            save_hist.append(self.coef_variation)
-            save_hold_time_temp.append(self.save_time_hold)
-            print(f'cumulative gain {round(self.cumlative_gained,4)}% after running {name}')
-            sleep(1)
-        # plt.figure()
-        # plt.hist(save_hist,bins=100)
-        # plt.show()
-        # print(save_hold_time_temp)
-        coeff_var_75, coeff_var_25 = percentile(save_hist, 
-                                    [75 ,25])
-        print(f'LB {coeff_var_25} : UP {coeff_var_75}')
-        iter_hold_pos = mean([item for sublist in save_hold_time_temp for item in sublist])
-        print(iter_hold_pos * SAMPLE_RATE, 'minutes held')
+        self.average_pos_hold = 76
+        self.lb_coef_deter = 18.75
+        self.ub_coef_deter = 60.35
+        while True:
+            pos_crypt = self.get_24_above_zero()
+            files = glob(join(getcwd(),'technical_analysis','*'))
+            for f in files:
+                remove(f)
+            save_hist = []
+            save_hold_time_temp = []
+            for name in tqdm(pos_crypt):
+                self.get_ohlc(name)
+                self.macd()
+                self.RSI()
+                self.aroon_ind()
+                self.moving_averages()
+                self.awesome_indicator()
+                self.half_LR()
+                self.volatility()
+                self.trade()
+                self.plot(name)
+                self.live_trading(name)
+                save_hist.append(self.coef_variation)
+                save_hold_time_temp.append(self.save_time_hold)
+                print(f'cumulative gain {round(self.cumlative_gained,4)}% after running {name}')
+                sleep(1)
+            # plt.figure()
+            # plt.hist(save_hist,bins=100)
+            # plt.show()
+            # print(save_hold_time_temp)
+            coeff_var_75, coeff_var_25 = percentile(save_hist, 
+                                        [75 ,25])
+            self.lb_coef_deter = coeff_var_25
+            self.ub_coef_deter = coeff_var_75
+            print(f'LB {self.lb_coef_deter} : UP {self.ub_coef_deter}')
+            iter_hold_pos = median([item for sublist in save_hold_time_temp for item in sublist])
+            self.average_pos_hold = iter_hold_pos
+            print(f'median iterations held {self.average_pos_hold}')
+            print(iter_hold_pos * SAMPLE_RATE, 'minutes held')
+            sleep(SAMPLE_RATE*60)
 def main():
     technical().run_analysis_pos_crypt()
 if __name__ == "__main__":
