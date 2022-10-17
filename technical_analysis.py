@@ -14,12 +14,12 @@ from numpy import array, zeros, nan, arange, percentile, empty, log, mean
 from time import sleep
 # import argparse
 from os import path, getcwd, listdir, remove, mkdir
-from pandas import DataFrame, read_csv, date_range
+from pandas import DataFrame, read_csv
 # from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
-from os.path import join, exists
+from os.path import join
 import warnings
-# import buy_sell_signals
+from buy_sell_signals import buy_signal_hft
 # from datetime import datetime, timedelta
 # from scipy.signal import savgol_filter
 from tqdm import tqdm
@@ -164,6 +164,7 @@ class technical():
         ax[0].plot(self.data.index, self.data['ewmshort'], 'crimson', label = 'short-128')
         ax[0].plot(self.data.index, self.data['ewmmedium'], 'green', label = 'medium-25')
         ax[0].scatter(self.data.index, self.data['buy'], marker='o', s=120, color = 'g', label = 'buy')
+        ax[0].scatter(self.data.index, self.data['buy_no_condition'], marker='o', s=120, color = 'black', label = 'buy_no_open_trade')
         ax[0].scatter(self.data.index, self.data['sell'], marker='o', s=120, color = 'r', label = 'sell')
         # ax[0].vlines(x=self.data.index[indx],
         #              ymin=min(self.data['close'].values),
@@ -232,6 +233,8 @@ class technical():
     def trade(self):
         self.data['buy'] = empty(len(self.data))
         self.data['buy'].iloc[:] = nan
+        self.data['buy_no_condition'] = empty(len(self.data))
+        self.data['buy_no_condition'].iloc[:] = nan
         self.data['sell'] = empty(len(self.data))
         self.data['sell'].iloc[:] = nan
         open_trade = True
@@ -259,7 +262,8 @@ class technical():
                 (self.coef_variation > 18.75) and 
                 (self.coef_variation < 60.35) #use the values that are calculated at the end
                 ):  
-                    self.buy_for_trading = self.data['close'].iloc[o]
+                    self.buy_for_trading = o
+                    self.data['buy_no_condition'] = self.data['close'].iloc[o]
                     if open_trade == True:
                         self.data['buy'].iloc[o] = self.data['close'].iloc[o]
                         buy_price = self.data['close'].iloc[o]
@@ -278,6 +282,29 @@ class technical():
                 self.data['sell'].iloc[o] = self.data['close'].iloc[o]
                 self.cumlative_gained += ((self.data['close'].iloc[o] - buy_price) / buy_price)*100
                 open_trade = True
+    def live_trading(self,name):
+        if len(self.data) - self.buy_for_trading < 2:
+            print(f'buy {name}')
+            #put a buy function here : ad save the thresh and time? 
+            old_name = name.replace('USD','')
+            ind_cryp_t = self.crypto_list[self.crypto_list['crypto'] == old_name]
+            volume_inst = ind_cryp_t['Order'].values
+            balance = self.kraken.get_account_balance()
+            _, ask_price , _ = buy_signal_hft(name, self.kraken, volume_inst, balance.vol['ZUSD'])
+            while True:
+                self.get_ohlc(name)
+                self.macd()
+                self.RSI()
+                self.aroon_ind()
+                self.moving_averages()
+                self.awesome_indicator()
+                self.half_LR()
+                self.volatility()
+                self.trade()
+                self.plot(name)
+                sleep(SAMPLE_RATE)
+    def check_sell(self):
+        pass
     def run_analysis_pos_crypt(self):
         pos_crypt = self.get_24_above_zero()
         files = glob(join(getcwd(),'technical_analysis','*'))
@@ -296,6 +323,7 @@ class technical():
             self.volatility()
             self.trade()
             self.plot(name)
+            self.live_trading(name)
             save_hist.append(self.coef_variation)
             save_hold_time_temp.append(self.save_time_hold)
             print(f'cumulative gain {round(self.cumlative_gained,4)}% after running {name}')

@@ -23,6 +23,7 @@ def kraken_info():
     api.load_key('key.txt')
     kraken = KrakenAPI(api)
     return kraken
+
 def buy_signal_hft(trade_crypt, kraken, volume_inst, account_bal):
     traded = False
     try:
