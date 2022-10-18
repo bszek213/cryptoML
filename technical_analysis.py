@@ -25,6 +25,9 @@ from buy_sell_signals import buy_signal_hft,basic_sell
 from tqdm import tqdm
 from glob import glob
 warnings.filterwarnings("ignore")
+"""
+TODO: convert UTC to PST time
+"""
 SAMPLE_RATE = 5
 class technical():
     def __init__(self):
@@ -224,7 +227,7 @@ class technical():
         ax[3].set_xlabel('iterations')
         ax[3].set_ylabel('Awesome Indicator')
         ax[3].grid(True)
-        save_name = name + '.svg'
+        save_name = name + '.png'
         direct = getcwd()
         final_dir = join(direct, 'technical_analysis', save_name)
         plt.tight_layout()
@@ -283,7 +286,10 @@ class technical():
                 self.cumlative_gained += ((self.data['close'].iloc[o] - buy_price) / buy_price)*100
                 open_trade = True
     def live_trading(self,name):
-        if len(self.data) - self.buy_for_trading <= 2:
+        trade_now = len(self.data) - self.buy_for_trading
+        print(' ') #tqdm things
+        print(f'closet trade was {trade_now} iterations ago')
+        if trade_now <= 2:
             print(f'buy {name}')
             #put a buy function here : ad save the thresh and time? 
             old_name = name.replace('USD','')
@@ -293,6 +299,7 @@ class technical():
             _, ask_price , _ = buy_signal_hft(name, self.kraken, volume_inst, balance.vol['ZUSD'])
             threshold = ask_price + (ask_price * 0.0085)
             count_iter_hold = 0
+            sold_not_sold = 'not sold'
             while True:
                 self.get_ohlc(name)
                 self.macd()
@@ -304,8 +311,10 @@ class technical():
                 self.volatility()
                 self.trade()
                 self.plot(name)
-                self.check_sell(name, volume_inst, ask_price, threshold, count_iter_hold)
+                sold_not_sold = self.check_sell(name, volume_inst, ask_price, threshold, count_iter_hold)
                 count_iter_hold+=1
+                if sold_not_sold == 'sold':
+                    break
                 sleep(SAMPLE_RATE*60)
     def check_sell(self,name,volume_inst,ask_price,threshold,count_iter_hold):
         curr_ask = float((self.kraken.get_ticker_information(name))['a'][0][0])
@@ -313,9 +322,12 @@ class technical():
         if  (threshold < curr_ask):
             balance = self.kraken.get_account_balance()
             basic_sell(name, self.kraken, volume_inst, balance)
+            return 'sold'
         if count_iter_hold > self.average_pos_hold:
             balance = self.kraken.get_account_balance()
             basic_sell(name, self.kraken, volume_inst, balance)
+            return 'sold'
+        return 'not sold'
     def run_analysis_pos_crypt(self):
         self.average_pos_hold = 76
         self.lb_coef_deter = 18.75
@@ -356,6 +368,7 @@ class technical():
             self.average_pos_hold = iter_hold_pos
             print(f'median iterations held {self.average_pos_hold}')
             print(iter_hold_pos * SAMPLE_RATE, 'minutes held')
+            self.cumlative_gained = float(0.0)
             sleep(SAMPLE_RATE*60)
 def main():
     technical().run_analysis_pos_crypt()
