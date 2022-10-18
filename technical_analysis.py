@@ -364,10 +364,15 @@ class technical():
             self.lb_coef_deter = coeff_var_25
             self.ub_coef_deter = coeff_var_75
             print(f'LB {self.lb_coef_deter} : UP {self.ub_coef_deter}')
-            iter_hold_pos = median([item for sublist in save_hold_time_temp for item in sublist])
-            self.average_pos_hold = iter_hold_pos
-            print(f'median iterations held {self.average_pos_hold}')
-            print(iter_hold_pos * SAMPLE_RATE, 'minutes held')
+            iter_hold_pos = [item for sublist in save_hold_time_temp for item in sublist]
+            try:
+                iter_hold_pos_75,iter_hold_pos_25 = percentile(iter_hold_pos,[75 ,25])
+            except:
+                iter_hold_pos_75 = 76
+            self.average_pos_hold = iter_hold_pos_75
+            print(f'LB_iterations_held {iter_hold_pos_25} : UB_iterations_held {iter_hold_pos_75}')
+            #print(f'3rd quartile iterations held {self.average_pos_hold}')
+            print(iter_hold_pos_75 * SAMPLE_RATE, 'minutes held')
             self.cumlative_gained = float(0.0)
             sleep(SAMPLE_RATE*60)
 def main():
