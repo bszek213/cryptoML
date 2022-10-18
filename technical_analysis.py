@@ -367,10 +367,11 @@ class technical():
             iter_hold_pos = [item for sublist in save_hold_time_temp for item in sublist]
             try:
                 iter_hold_pos_75,iter_hold_pos_25 = percentile(iter_hold_pos,[75 ,25])
+                print(f'LB_iterations_held {iter_hold_pos_25} : UB_iterations_held {iter_hold_pos_75}')
             except:
                 iter_hold_pos_75 = 76
+                print(f'Use default hold time of {iter_hold_pos_75}, as percentile of the hold times could not be calculated')
             self.average_pos_hold = iter_hold_pos_75
-            print(f'LB_iterations_held {iter_hold_pos_25} : UB_iterations_held {iter_hold_pos_75}')
             #print(f'3rd quartile iterations held {self.average_pos_hold}')
             print(iter_hold_pos_75 * SAMPLE_RATE, 'minutes held')
             self.cumlative_gained = float(0.0)
