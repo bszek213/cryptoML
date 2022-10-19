@@ -268,6 +268,7 @@ class technical():
                 (self.data['RSI'].iloc[o] < self.q25) and
                 (self.data['ao'].iloc[o] < 0) and
                 (self.data['macd_diff'].iloc[o] < 0) and
+                (self.data['macd_diff'].iloc[o] < self.q25_macd) and
                 (self.coef_variation > self.lb_coef_deter) and 
                 (self.coef_variation < self.ub_coef_deter)
                 ):
@@ -304,6 +305,7 @@ class technical():
             balance = self.kraken.get_account_balance()
             _, ask_price , _ = buy_signal_hft(name, self.kraken, volume_inst, balance.vol['ZUSD'])
             threshold = ask_price + (ask_price * 0.0085)
+            thresh_sell = ask_price - (ask_price * (1.5*0.0085))
             count_iter_hold = 0
             sold_not_sold = 'not sold'
             while True:
@@ -318,19 +320,20 @@ class technical():
                 self.volatility()
                 self.trade()
                 self.plot(name)
-                sold_not_sold = self.check_sell(name, volume_inst, ask_price, threshold, count_iter_hold)
+                sold_not_sold = self.check_sell(name, volume_inst, ask_price, threshold, count_iter_hold,thresh_sell)
                 count_iter_hold+=1
                 if sold_not_sold == 'sold':
                     break
                 sleep(SAMPLE_RATE*60)
-    def check_sell(self,name,volume_inst,ask_price,threshold,count_iter_hold):
+    def check_sell(self,name,volume_inst,ask_price,threshold,count_iter_hold,thresh_sell):
         curr_ask = float((self.kraken.get_ticker_information(name))['a'][0][0])
         print(f'current ask: {curr_ask} : {threshold} threshold')
         if  (threshold < curr_ask):
             balance = self.kraken.get_account_balance()
             basic_sell(name, self.kraken, volume_inst, balance)
             return 'sold'
-        if count_iter_hold > self.average_pos_hold:
+        if (thresh_sell > curr_ask):
+        # if count_iter_hold > self.average_pos_hold:
             balance = self.kraken.get_account_balance()
             basic_sell(name, self.kraken, volume_inst, balance)
             return 'sold'
@@ -357,7 +360,9 @@ class technical():
                 self.half_LR()
                 self.volatility()
                 self.trade()
-                self.plot(name)
+                if ((self.lb_coef_deter < self.coef_variation) and 
+                   (self.ub_coef_deter > self.coef_variation)):
+                    self.plot(name)
                 self.live_trading(name)
                 save_hist.append(self.coef_variation)
                 save_hold_time_temp.append(self.save_time_hold)
@@ -383,10 +388,10 @@ class technical():
             #print(f'3rd quartile iterations held {self.average_pos_hold}')
             print(iter_hold_pos_75 * SAMPLE_RATE, 'minutes held')
             self.cumlative_gained = float(0.0)
-            sleep(SAMPLE_RATE*60)
             print(f'% RAM USED: {virtual_memory()[2]}')
             if virtual_memory()[2] > 95:
                 break
+            sleep(SAMPLE_RATE*60)
 def main():
     technical().run_analysis_pos_crypt()
 if __name__ == "__main__":
