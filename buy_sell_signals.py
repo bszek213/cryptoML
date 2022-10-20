@@ -23,6 +23,7 @@ def kraken_info():
     api.load_key('key.txt')
     kraken = KrakenAPI(api)
     return kraken
+
 def buy_signal_hft(trade_crypt, kraken, volume_inst, account_bal):
     traded = False
     try:
@@ -123,7 +124,7 @@ def basic_sell(trade_crypt, kraken, volume_inst, balance):
     trade_crypt_og = trade_crypt_og + 'USD'
     print(f'asset pair: {trade_crypt_og}')
     print(f'asset pair volume: {volume_final}')
-    print('sell: Gain')
+    # print('sell: Gain')
     try:
         response = kraken.add_standard_order(pair=trade_crypt_og, type='sell', ordertype='market',
                                      volume=volume_final, validate=False)
