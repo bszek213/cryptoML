@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 # key file
 key.txt
+errors.log
 
 # C extensions
 *.so
