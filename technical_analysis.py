@@ -152,6 +152,7 @@ class technical():
         for i in X1_half:
             reg_arr_half[i] = (reg.coef_ * i) + reg.intercept_
         self.reg_obv = [nan if x == 0 else x for x in reg_arr_half]
+        self.obv_reg = reg
         # rval_reg =  reg_arr_half[reg_arr_half != 0]
         # rval, pval = pearsonr(rval_reg, self.data['close'].iloc[-data_len-1:-1].values)
         
@@ -210,6 +211,7 @@ class technical():
             print('IndexError: cannot do a non-empty take from an empty axes. default to 0')
             self.q75_Stoch_RSI, self.q25_Stoch_RSI = 0,0
     def moving_averages(self):
+        self.q75_close, self.q25_close = percentile(self.data['close'].dropna().values, [75 ,25])
         self.data['ewmshort'] = self.data['close'].ewm(span=25, min_periods=25).mean() #used to be 50
         self.data['ewmmedium'] = self.data['close'].ewm(span=128, min_periods=128).mean()
         self.data['ewmlong'] = self.data['close'].ewm(span=200, min_periods=200).mean()
@@ -266,6 +268,8 @@ class technical():
         ax[0].scatter(self.data.index, self.data['buy'], marker='o', s=120, color = 'g', label = 'buy')
         ax[0].scatter(self.data.index, self.data['buy_no_condition'], marker='o', s=60, color = 'black', label = 'buy_no_open_trade')
         ax[0].scatter(self.data.index, self.data['sell'], marker='o', s=120, color = 'r', label = 'sell')
+        ax[0].fill_between(self.data.index, self.q75_close, self.q25_close, color='green',
+                          alpha=0.2,label='IQR range close')
         ax[0].legend()
         ax[0].grid(True)
         # ax[0].set_xlim(left=x_low_lim)
@@ -286,6 +290,8 @@ class technical():
         ax[1].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
         ax[1].legend()
         ax[1].grid(True)
+        title_obs = f'reg last 24 hours OBV: {self.obv_reg.coef_[0]}'
+        ax[1].set_title(title_obs)
         # ax[1].set_xlim(x_low_lim)
         ax[1].set_xlabel('Date')
         ax[1].set_ylabel('OBV Values')
@@ -359,12 +365,17 @@ class technical():
                 # (self.data['macd_diff'].iloc[o] < self.q75_macd) and
                 # (self.coef_variation > self.lb_coef_deter) and 
                 # (self.coef_variation < self.ub_coef_deter)
-                (self.data['macd_diff'].iloc[o-1] < self.data['signal_line'].iloc[o-1]) and
-                (self.data['macd_diff'].iloc[o] > self.data['signal_line'].iloc[o]) and
-                (self.data['RSI'].iloc[o] < self.q25) and
-                (self.data['ao'].iloc[o] < 0) and
                 # (self.coef_variation > self.lb_coef_deter) and #maybe volatitlity is what I want? switching from things within the IQR to things above
-                (self.coef_variation > self.ub_coef_deter)
+                # (self.coef_variation > self.ub_coef_deter)
+                # (self.obv_reg.coef_[0] > 0) and
+                (self.data['OBV'].iloc[o] < self.q25_OBV) and
+                (self.data['volume_os'].iloc[o-1] <= 0) and
+                (self.data['volume_os'].iloc[o] > self.q75_vol_os) and
+                (self.data['volume_os'].iloc[o-1] < self.data['volume_os'].iloc[o]) and
+                (self.data['RSI'].iloc[o] < self.q25) and
+                (self.data['ao'].iloc[o-1] < self.data['ao'].iloc[o]) and
+                (self.data['ao'].iloc[o] < self.q25_ao) and 
+                (self.data['close'].iloc[0] < self.q25_close)
                 ):
                     self.buy_for_trading = o
                     self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
@@ -380,12 +391,15 @@ class technical():
             #TODO change the sell condition to zero crossing of the Awe ind
             if (
                 (open_trade == False) and
-                (self.data['macd_diff'].iloc[o-1] > self.data['signal_line'].iloc[o-1]) and
-                (self.data['macd_diff'].iloc[o] < self.data['signal_line'].iloc[o]) and
-                (self.data['macd_diff'].iloc[o] > 0)
+                self.data['RSI'].iloc[o] > self.q75
                 ):
                 self.data['sell'].iloc[o] = self.data['close'].iloc[o]
-                self.cumlative_gained += ((self.data['close'].iloc[o] - buy_price) / buy_price)*100
+                simulate_fees_buy = buy_price * 0.0026
+                simulate_fees_sell = self.data['close'].iloc[o] * 0.0026
+                buy_plus_fees = buy_price + simulate_fees_buy +  simulate_fees_sell
+                gain_lost = ((self.data['close'].iloc[o] - buy_plus_fees) / buy_plus_fees)*100
+                print(f'percent gained or lost at sell: {gain_lost}')
+                self.cumlative_gained += gain_lost
                 self.save_time_hold.append(count_hold_iter)
                 open_trade = True
             # if (self.data['ao'].iloc[o] > 0):
@@ -476,11 +490,8 @@ class technical():
                 self.trade()
                 # if self.coef_variation != 'nan':
                 save_hist.append(self.coef_variation)
-                # if (
-                #     # (self.lb_coef_deter < self.coef_variation) and 
-                #    (self.ub_coef_deter < self.coef_variation)
-                #    ):
-                self.plot(name)
+                if (len(self.data) - self.buy_for_trading < int(len(self.data)/2)):
+                    self.plot(name)
                 self.live_trading(name)
                 save_hold_time_temp.append(self.save_time_hold)
                 # print(self.corr_RSI_MACD)
