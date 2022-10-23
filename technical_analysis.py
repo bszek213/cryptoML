@@ -26,13 +26,14 @@ from tqdm import tqdm
 from glob import glob
 from psutil import virtual_memory
 import logging
+from scipy.stats import pearsonr
 warnings.filterwarnings("ignore")
 """
 TODO: 
 -convert UTC to PST time
 -change the sell condition to be the crossover points of the MACD or zero crossing of the Awe ind
 """
-SAMPLE_RATE = 5
+SAMPLE_RATE = 15
 logging.basicConfig(filename=join(getcwd(),'errors.log'), level=logging.DEBUG, 
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
 logger=logging.getLogger(__name__)
@@ -179,6 +180,13 @@ class technical():
         self.data['log_return'] = log(self.data['close']/self.data['close'].shift())
         self.volatility_value = self.data['log_return'].std()*len(self.data)**0.5 #365 days of trading square root
         self.coef_variation = self.data['log_return'].std() / self.data['log_return'].mean()
+    def correlational_analysis(self):
+        len_RSI = len(self.data['RSI'].dropna().values)
+        len_macd = len(self.data['macd_diff'].dropna().values)
+        len_ao = len(self.data['ao'].dropna().values)
+        len_values = min([len_RSI,len_macd,len_ao])
+        self.corr_RSI_MACD = pearsonr(self.data['RSI'].dropna().iloc[0:len_values].values,self.data['macd_diff'].dropna().iloc[0:len_values].values)
+        self.corr_ao_MACD = pearsonr(self.data['ao'].dropna().iloc[0:len_values].values,self.data['macd_diff'].dropna().iloc[0:len_values].values)
     def plot(self,name):
         # xlim_val = [self.data.index[int((24*60)/SAMPLE_RATE)],self.data.index[-1]]
         x_low_lim = self.data.index[-int((24*60)/SAMPLE_RATE)]
@@ -289,8 +297,8 @@ class technical():
                 (self.data['ao'].iloc[o] < 0) and
                 (self.data['macd_diff'].iloc[o] < 0) and
                 (self.data['macd_diff'].iloc[o] < self.q25_macd) and
-                (self.coef_variation > self.lb_coef_deter) and 
-                (self.coef_variation < self.ub_coef_deter)
+                # (self.coef_variation > self.lb_coef_deter) and #maybe volatitlity is what I want? switching from things within the IQR to things above
+                (self.coef_variation > self.ub_coef_deter)
                 ):
                     self.buy_for_trading = o
                     self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
@@ -393,14 +401,19 @@ class technical():
                 self.awesome_indicator()
                 self.half_LR()
                 self.volatility()
+                # self.correlational_analysis()
                 self.trade()
                 # if self.coef_variation != 'nan':
                 save_hist.append(self.coef_variation)
-                if ((self.lb_coef_deter < self.coef_variation) and 
-                   (self.ub_coef_deter > self.coef_variation)):
+                if (
+                    # (self.lb_coef_deter < self.coef_variation) and 
+                   (self.ub_coef_deter < self.coef_variation)
+                   ):
                     self.plot(name)
                 self.live_trading(name)
                 save_hold_time_temp.append(self.save_time_hold)
+                # print(self.corr_RSI_MACD)
+                # print(self.corr_ao_MACD)
                 print(f'cumulative gain {round(self.cumlative_gained,4)}% after running {name}')
                 sleep(1)
             # plt.figure()
