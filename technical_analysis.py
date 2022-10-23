@@ -53,20 +53,22 @@ class technical():
     def get_24_above_zero(self):
         save_positive = []
         self.readin_cryptos()
+        #TODO: linear regression does not seem to work well. I will come back to this
         for name in tqdm(self.crypto_list['crypto']):
             try:
                 update_name = name + 'USD'
                 self.get_ohlc(update_name)
-                # prev_24 = self.data.close.iloc[-total_samples]
-                # current = self.data.close.iloc[-1]
-                self.half_LR()
-                # self.volatility()
-                if (self.reg_coef > 0): #add coeff variation here
-                    save_positive.append(update_name)
+        #         # prev_24 = self.data.close.iloc[-total_samples]
+        #         # current = self.data.close.iloc[-1]
+        #         self.half_LR()
+        #         # self.volatility()
+        #         if (self.reg_coef > 0): #add coeff variation here
+                save_positive.append(update_name)
                 sleep(1) #I have to do this or I get gated
             except:
                 print(f'{name} could not be found')
-        print(f'All positive cryptos: {save_positive}')
+        # print(f'All positive cryptos: {save_positive}')
+        # return save_positive
         return save_positive
     def get_ohlc(self,crypt):
         self.data = DataFrame()
@@ -112,6 +114,50 @@ class technical():
         temp_arr = [x for x in self.reg_arr_half if ~isnan(x)]
         APE = (self.data['close'].iloc[-data_len-1:-1].values - temp_arr) / self.data['close'].iloc[-data_len-1:-1].values
         self.MAPE = abs(mean(APE))*100
+    def OBV(self,name='None'):
+        """
+        If the closing price of the asset is higher than the previous day?s closing price: 
+        OBV = Previous OBV + Current Day Volume
+        
+        If the closing price of the asset is the same as the previous day?s closing price:
+        OBV = Previous OBV (+ 0)
+        If the closing price of the asset is lower than the previous day?s closing price:
+        OBV = Previous OBV - Current Day's Volume
+        """
+        #TODO: add a linear regression lineover like 10-20 data points and use that 
+        # as a buy signal if it is positive
+        self.data['OBV'] = zeros(len(self.data))
+        # crypto_df_final['OBV'].iloc[0] = crypto_df_final['volume'].iloc[0]
+        OBV_iter = self.data['volume'].iloc[0]
+        self.data['OBV'].iloc[0] = OBV_iter
+        for i in range(1,len(self.data['OBV'])):
+            if (self.data['close'].iloc[i-1] < self.data['close'].iloc[i]):
+                OBV_iter += self.data['volume'].iloc[i]
+            if (self.data['close'].iloc[i-1] > self.data['close'].iloc[i]):
+                OBV_iter -= self.data['volume'].iloc[i]
+            if (self.data['close'].iloc[i-1] == self.data['close'].iloc[i]):
+                OBV_iter += 0
+            self.data['OBV'].iloc[i] = OBV_iter
+    
+        #linear regression
+        data_len = int((24*60)/SAMPLE_RATE)
+        a_list = list(arange(len(self.data)-data_len,len(self.data)))
+        X1 = array(a_list)
+        X = X1.reshape(-1, 1)
+        reg = LinearRegression().fit(X, self.data['OBV'].iloc[-data_len-1:-1].values)
+    
+        #create an array  of linear regression - short 
+        X1_half = arange(len(self.data)-data_len,len(self.data))
+        reg_arr_half = zeros(len(self.data))
+        for i in X1_half:
+            reg_arr_half[i] = (reg.coef_ * i) + reg.intercept_
+        self.reg_obv = [nan if x == 0 else x for x in reg_arr_half]
+        # rval_reg =  reg_arr_half[reg_arr_half != 0]
+        # rval, pval = pearsonr(rval_reg, self.data['close'].iloc[-data_len-1:-1].values)
+        
+        #calc OBV bounds 
+        self.q75_OBV, self.q25_OBV = percentile(self.data['OBV'].dropna().values, [75 ,25])
+
     def awesome_indicator(self):
         self.data['median_price'] = (self.data['high'] + self.data['low']) / 2
         self.data['long_ao'] = self.data['median_price'].rolling(34,
@@ -176,21 +222,36 @@ class technical():
         """
         self.data['aroon_up'] = 100 * ((self.data.high.rolling(lb).apply(lambda x: x.argmax())) / lb)
         self.data['aroon_down'] = 100 * ((self.data.low.rolling(lb).apply(lambda x: x.argmin())) / lb)
+    def volume_osc(self):
+        """
+        Volume Oscillator = [(Shorter Period SMA of Volume – Longer Period SMA of Volume)
+                             / Longer Period SMA of Volume ] * 100
+        """
+        short = self.data['volume'].ewm(span=14,min_periods=13).mean() 
+        long = self.data['volume'].ewm(span=28,min_periods=27).mean() 
+        self.data['volume_os'] = ((short - long) / long) * 100
+        self.q75_vol_os, self.q25_vol_os = percentile(self.data['volume_os'].dropna().values, [75 ,25])
+        #Filter
+        # sav_data =  savgol_filter(crypto_df['volume_os'].dropna().values, filter_val, 2)
+        # an_array = empty(len(crypto_df['volume_os']))
+        # an_array[:] = nan
+        # an_array[len(crypto_df['volume_os']) - len(sav_data):len(crypto_df['volume_os'])] = sav_data
+        # crypto_df['volume_os'] = an_array
     def volatility(self):
         self.data['log_return'] = log(self.data['close']/self.data['close'].shift())
         self.volatility_value = self.data['log_return'].std()*len(self.data)**0.5 #365 days of trading square root
         self.coef_variation = self.data['log_return'].std() / self.data['log_return'].mean()
-    def correlational_analysis(self):
-        len_RSI = len(self.data['RSI'].dropna().values)
-        len_macd = len(self.data['macd_diff'].dropna().values)
-        len_ao = len(self.data['ao'].dropna().values)
-        len_values = min([len_RSI,len_macd,len_ao])
-        self.corr_RSI_MACD = pearsonr(self.data['RSI'].dropna().iloc[0:len_values].values,self.data['macd_diff'].dropna().iloc[0:len_values].values)
-        self.corr_ao_MACD = pearsonr(self.data['ao'].dropna().iloc[0:len_values].values,self.data['macd_diff'].dropna().iloc[0:len_values].values)
+    # def correlational_analysis(self):
+    #     len_RSI = len(self.data['RSI'].dropna().values)
+    #     len_macd = len(self.data['macd_diff'].dropna().values)
+    #     len_ao = len(self.data['ao'].dropna().values)
+    #     len_values = min([len_RSI,len_macd,len_ao])
+    #     self.corr_RSI_MACD = pearsonr(self.data['RSI'].dropna().iloc[0:len_values].values,self.data['macd_diff'].dropna().iloc[0:len_values].values)
+    #     self.corr_ao_MACD = pearsonr(self.data['ao'].dropna().iloc[0:len_values].values,self.data['macd_diff'].dropna().iloc[0:len_values].values)
     def plot(self,name):
         # xlim_val = [self.data.index[int((24*60)/SAMPLE_RATE)],self.data.index[-1]]
         x_low_lim = self.data.index[-int((24*60)/SAMPLE_RATE)]
-        fig, ax = plt.subplots(4,1,figsize=(12, 20)) 
+        fig, ax = plt.subplots(5,1,figsize=(15, 20)) 
         buy_df = self.data[~self.data['buy'].isnull()]
         sell_df = self.data[~self.data['sell'].isnull()]
         #plot close price
@@ -205,35 +266,29 @@ class technical():
         ax[0].scatter(self.data.index, self.data['buy'], marker='o', s=120, color = 'g', label = 'buy')
         ax[0].scatter(self.data.index, self.data['buy_no_condition'], marker='o', s=60, color = 'black', label = 'buy_no_open_trade')
         ax[0].scatter(self.data.index, self.data['sell'], marker='o', s=120, color = 'r', label = 'sell')
-        # ax[0].vlines(x=self.data.index[indx],
-        #              ymin=min(self.data['close'].values),
-        #              ymax= max(self.data['close'].values),color='g',label='buy')
-        # ax[0].vlines(x=self.data.index[indx_sell],
-        #              ymin=min(self.data['close'].values),
-        #              ymax= max(self.data['close'].values),color='r',label='sell')
         ax[0].legend()
         ax[0].grid(True)
-        ax[0].set_xlim(left=x_low_lim)
-        ax[0].set_xlabel('iterations')
+        # ax[0].set_xlim(left=x_low_lim)
+        ax[0].set_xlabel('Date')
         ax[0].set_ylabel('Close Price')
         #plot macd
-        ax[1].plot(self.data.index, self.data['macd_diff'], 'tab:blue', marker="o",
-                        markersize=1, linestyle='-', label = 'macd diff')
-        ax[1].plot(self.data.index, self.data['signal_line'], 'tab:red', marker="o",
-                        markersize=1, linestyle='-', label = 'signal line')
-        ax[1].fill_between(self.data.index, self.q75_macd, self.q25_macd, color='green',
-                          alpha=0.2,label='IQR range MACD')
-        ax[1].scatter(buy_df.index, buy_df['macd_diff'], marker='o', s=120, color = 'g', label = 'buy')
-        ax[1].scatter(sell_df.index, sell_df['macd_diff'], marker='o', s=120, color = 'r', label = 'sell')
+        ax[1].plot(self.data.index, self.data['OBV'], 'tab:blue', marker="o",
+                        markersize=1, linestyle='-', label = 'OBV diff')
+        ax[1].plot(self.data.index, self.reg_obv, 'tab:red', marker="o",
+                        markersize=1, linestyle='-', label = 'obv_regression line')
+        ax[1].fill_between(self.data.index, self.q75_OBV, self.q25_OBV, color='green',
+                          alpha=0.2,label='IQR range OBV')
+        ax[1].scatter(buy_df.index, buy_df['OBV'], marker='o', s=120, color = 'g', label = 'buy')
+        ax[1].scatter(sell_df.index, sell_df['OBV'], marker='o', s=120, color = 'r', label = 'sell')
         # ax[1].vlines(x=self.data.index[indx],
         #              ymin=min(self.data['macd_diff'].values),
         #              ymax= max(self.data['macd_diff'].values),color='g')
         ax[1].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
         ax[1].legend()
         ax[1].grid(True)
-        ax[1].set_xlim(x_low_lim)
-        ax[1].set_xlabel('iterations')
-        ax[1].set_ylabel('MACD Values')
+        # ax[1].set_xlim(x_low_lim)
+        ax[1].set_xlabel('Date')
+        ax[1].set_ylabel('OBV Values')
         #RSI
         ax[2].plot(self.data.index, self.data['RSI'], 'r', marker="o", markersize=2, 
                    linestyle='-',
@@ -244,9 +299,9 @@ class technical():
         ax[2].scatter(buy_df.index, buy_df['RSI'], marker='o', s=120, color = 'g', label = 'buy')
         ax[2].scatter(sell_df.index, sell_df['RSI'], marker='o', s=120, color = 'r', label = 'sell')
         ax[2].legend()
-        ax[2].set_xlim(x_low_lim)
-        ax[2].set_xlabel('iterations')
-        ax[2].set_ylabel('stochRSI Values')
+        # ax[2].set_xlim(x_low_lim)
+        ax[2].set_xlabel('Date')
+        ax[2].set_ylabel('RSI Values')
         ax[2].grid(True)
         #ao indicator
         ax[3].plot(self.data.index, self.data['ao'], 'r', marker="o", markersize=2, 
@@ -257,10 +312,23 @@ class technical():
         ax[3].fill_between(self.data.index, self.q75_ao, self.q25_ao, color='green',
                           alpha=0.2,label='IQR range AO')
         ax[3].legend()
-        ax[3].set_xlim(x_low_lim)
-        ax[3].set_xlabel('iterations')
+        # ax[3].set_xlim(x_low_lim)
+        ax[3].set_xlabel('Date')
         ax[3].set_ylabel('Awesome Indicator')
         ax[3].grid(True)
+        #Volume Oscillator
+        ax[4].plot(self.data.index, self.data['volume_os'], 'r', marker="o", markersize=2, 
+                   linestyle='-',linewidth= 0.25, label = 'Volume Oscillator')
+        ax[4].scatter(buy_df.index, buy_df['volume_os'], marker='o', s=120, color = 'g', label = 'buy')
+        ax[4].scatter(sell_df.index, sell_df['volume_os'], marker='o', s=120, color = 'r', label = 'sell')
+        ax[4].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
+        ax[4].fill_between(self.data.index, self.q75_vol_os, self.q25_vol_os, color='green',
+                          alpha=0.2,label='IQR range Vol Os')
+        ax[4].legend()
+        # ax[3].set_xlim(x_low_lim)
+        ax[4].set_xlabel('Date')
+        ax[4].set_ylabel('Volume Oscillator')
+        ax[4].grid(True)
         save_name = name + '.png'
         direct = getcwd()
         final_dir = join(direct, 'technical_analysis', save_name)
@@ -295,8 +363,6 @@ class technical():
                 (self.data['macd_diff'].iloc[o] > self.data['signal_line'].iloc[o]) and
                 (self.data['RSI'].iloc[o] < self.q25) and
                 (self.data['ao'].iloc[o] < 0) and
-                (self.data['macd_diff'].iloc[o] < 0) and
-                (self.data['macd_diff'].iloc[o] < self.q25_macd) and
                 # (self.coef_variation > self.lb_coef_deter) and #maybe volatitlity is what I want? switching from things within the IQR to things above
                 (self.coef_variation > self.ub_coef_deter)
                 ):
@@ -312,7 +378,8 @@ class technical():
             if (open_trade == False):
                 count_hold_iter +=1
             #TODO change the sell condition to zero crossing of the Awe ind
-            if ((open_trade == False) and
+            if (
+                (open_trade == False) and
                 (self.data['macd_diff'].iloc[o-1] > self.data['signal_line'].iloc[o-1]) and
                 (self.data['macd_diff'].iloc[o] < self.data['signal_line'].iloc[o]) and
                 (self.data['macd_diff'].iloc[o] > 0)
@@ -331,7 +398,7 @@ class technical():
         trade_now = len(self.data) - self.buy_for_trading
         print(' ') #tqdm things
         print(f'closet trade was {trade_now} iterations ago')
-        if trade_now <= 2:
+        if trade_now <= 1:
             try:
                 print(f'buy {name}')
                 #put a buy function here : ad save the thresh and time? 
@@ -350,6 +417,8 @@ class technical():
                         self.get_ohlc(name)
                         self.macd()
                         self.RSI()
+                        self.OBV()
+                        self.volume_osc()
                         # self.stoch_RSI()
                         self.aroon_ind()
                         self.moving_averages()
@@ -395,6 +464,8 @@ class technical():
                 self.get_ohlc(name)
                 self.macd()
                 self.RSI()
+                self.OBV()
+                self.volume_osc()
                 # self.stoch_RSI()
                 self.aroon_ind()
                 self.moving_averages()
@@ -405,11 +476,11 @@ class technical():
                 self.trade()
                 # if self.coef_variation != 'nan':
                 save_hist.append(self.coef_variation)
-                if (
-                    # (self.lb_coef_deter < self.coef_variation) and 
-                   (self.ub_coef_deter < self.coef_variation)
-                   ):
-                    self.plot(name)
+                # if (
+                #     # (self.lb_coef_deter < self.coef_variation) and 
+                #    (self.ub_coef_deter < self.coef_variation)
+                #    ):
+                self.plot(name)
                 self.live_trading(name)
                 save_hold_time_temp.append(self.save_time_hold)
                 # print(self.corr_RSI_MACD)
