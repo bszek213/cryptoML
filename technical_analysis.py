@@ -14,13 +14,14 @@ from numpy import array, zeros, nan, arange, percentile, empty, log, mean, isnan
 from time import sleep
 # import argparse
 from os import getcwd, remove
-from pandas import DataFrame, read_csv
+from pandas import DataFrame, read_csv, date_range
 # from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 from os.path import join
 import warnings
 from buy_sell_signals import buy_signal_hft,basic_sell
 # from datetime import datetime, timedelta
+from datetime import datetime
 # from scipy.signal import savgol_filter
 from tqdm import tqdm
 from glob import glob
@@ -114,6 +115,15 @@ class technical():
         temp_arr = [x for x in self.reg_arr_half if ~isnan(x)]
         APE = (self.data['close'].iloc[-data_len-1:-1].values - temp_arr) / self.data['close'].iloc[-data_len-1:-1].values
         self.MAPE = abs(mean(APE))*100
+    def bollinger_band(self):
+        self.data['typical_price'] = (self.data['close'] + self.data['high'] + self.data['low']) / 3
+        self.data['TP_ewm'] = self.data['typical_price'].ewm(span=20,
+                          min_periods=19).mean()
+        self.data['std'] = self.data['TP_ewm'].ewm(span=20,
+                          min_periods=19).std()
+        self.data['upper_bound'] = self.data['TP_ewm']  + (2 * self.data['std'])
+        self.data['lower_bound'] = self.data['TP_ewm']  - (2 * self.data['std'])
+        
     def OBV(self,name='None'):
         """
         If the closing price of the asset is higher than the previous day?s closing price: 
@@ -251,13 +261,15 @@ class technical():
     #     self.corr_RSI_MACD = pearsonr(self.data['RSI'].dropna().iloc[0:len_values].values,self.data['macd_diff'].dropna().iloc[0:len_values].values)
     #     self.corr_ao_MACD = pearsonr(self.data['ao'].dropna().iloc[0:len_values].values,self.data['macd_diff'].dropna().iloc[0:len_values].values)
     def plot(self,name):
+        #create new date time
+        self.data.index = date_range(end=datetime.now(),periods=len(self.data.index),freq="15min")
         # xlim_val = [self.data.index[int((24*60)/SAMPLE_RATE)],self.data.index[-1]]
         x_low_lim = self.data.index[-int((24*60)/SAMPLE_RATE)]
         fig, ax = plt.subplots(5,1,figsize=(15, 20)) 
         buy_df = self.data[~self.data['buy'].isnull()]
         sell_df = self.data[~self.data['sell'].isnull()]
         #plot close price
-        str_name = f'{name} : {round(self.coef_variation,4)} coeff of variation : fit error: {self.MAPE}%'
+        str_name = f'{name} : % gain/lost: {self.gain_lost} | {round(self.coef_variation,4)} coeff of variation : fit error: {self.MAPE}%'
         ax[0].set_title(str_name)
         ax[0].plot(self.data.index,self.data['close'],'tab:blue', marker="o",
                markersize=1, linestyle='', label = 'Close Price')
@@ -268,8 +280,8 @@ class technical():
         ax[0].scatter(self.data.index, self.data['buy'], marker='o', s=120, color = 'g', label = 'buy')
         ax[0].scatter(self.data.index, self.data['buy_no_condition'], marker='o', s=60, color = 'black', label = 'buy_no_open_trade')
         ax[0].scatter(self.data.index, self.data['sell'], marker='o', s=120, color = 'r', label = 'sell')
-        ax[0].fill_between(self.data.index, self.q75_close, self.q25_close, color='green',
-                          alpha=0.2,label='IQR range close')
+        ax[0].fill_between(self.data.index, self.q25_close, self.q75_close, color='black',
+                      alpha=0.25)
         ax[0].legend()
         ax[0].grid(True)
         # ax[0].set_xlim(left=x_low_lim)
@@ -355,6 +367,7 @@ class technical():
         thresh_sell = 0
         count_hold_iter = 0
         self.save_time_hold = []
+        self.gain_lost = 0
         for o in range(len(self.data)): 
             if (
                 #This works but at 60%
@@ -370,8 +383,8 @@ class technical():
                 # (self.obv_reg.coef_[0] > 0) and
                 (self.data['OBV'].iloc[o] < self.q25_OBV) and
                 (self.data['volume_os'].iloc[o-1] <= 0) and
-                (self.data['volume_os'].iloc[o] > self.q75_vol_os) and
-                (self.data['volume_os'].iloc[o-1] < self.data['volume_os'].iloc[o]) and
+                (self.data['volume_os'].iloc[o] >= self.q75_vol_os) and
+                (self.data['volume_os'].iloc[o-1] <= self.q25_vol_os) and
                 (self.data['RSI'].iloc[o] < self.q25) and
                 (self.data['ao'].iloc[o-1] < self.data['ao'].iloc[o]) and
                 (self.data['ao'].iloc[o] < self.q25_ao) and 
@@ -391,17 +404,18 @@ class technical():
             #TODO change the sell condition to zero crossing of the Awe ind
             if (
                 (open_trade == False) and
-                self.data['RSI'].iloc[o] > self.q75
+                (self.data['RSI'].iloc[o] > self.q75)
                 ):
-                self.data['sell'].iloc[o] = self.data['close'].iloc[o]
-                simulate_fees_buy = buy_price * 0.0026
-                simulate_fees_sell = self.data['close'].iloc[o] * 0.0026
-                buy_plus_fees = buy_price + simulate_fees_buy +  simulate_fees_sell
-                gain_lost = ((self.data['close'].iloc[o] - buy_plus_fees) / buy_plus_fees)*100
-                print(f'percent gained or lost at sell: {gain_lost}')
-                self.cumlative_gained += gain_lost
-                self.save_time_hold.append(count_hold_iter)
-                open_trade = True
+                if ((self.data['RSI'].iloc[o-1] > self.data['RSI'].iloc[o]) or 
+                (self.data['RSI'].iloc[o-1] ==  self.data['RSI'].iloc[o])):
+                    self.data['sell'].iloc[o] = self.data['close'].iloc[o]
+                    simulate_fees_buy = buy_price * 0.0026
+                    simulate_fees_sell = self.data['close'].iloc[o] * 0.0026
+                    buy_plus_fees = buy_price + simulate_fees_buy +  simulate_fees_sell
+                    self.gain_lost += ((self.data['close'].iloc[o] - buy_plus_fees) / buy_plus_fees)*100
+                    self.cumlative_gained += self.gain_lost
+                    self.save_time_hold.append(count_hold_iter)
+                    open_trade = True
             # if (self.data['ao'].iloc[o] > 0):
             # if ((open_trade == False) and (thresh_buy < self.data['close'].iloc[o])):         
             # if ((open_trade == False) and (thresh_sell > self.data['close'].iloc[o])):
@@ -434,6 +448,7 @@ class technical():
                         self.OBV()
                         self.volume_osc()
                         # self.stoch_RSI()
+                        # self.bollinger_band()
                         self.aroon_ind()
                         self.moving_averages()
                         self.awesome_indicator()
@@ -480,6 +495,7 @@ class technical():
                 self.RSI()
                 self.OBV()
                 self.volume_osc()
+                # self.bollinger_band()
                 # self.stoch_RSI()
                 self.aroon_ind()
                 self.moving_averages()
