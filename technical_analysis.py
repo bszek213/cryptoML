@@ -381,14 +381,14 @@ class technical():
                 # (self.coef_variation > self.lb_coef_deter) and #maybe volatitlity is what I want? switching from things within the IQR to things above
                 # (self.coef_variation > self.ub_coef_deter)
                 # (self.obv_reg.coef_[0] > 0) and
+                # (self.data['close'].iloc[0] < self.q25_close)
                 (self.data['OBV'].iloc[o] < self.q25_OBV) and
                 (self.data['volume_os'].iloc[o-1] <= 0) and
                 (self.data['volume_os'].iloc[o] >= self.q75_vol_os) and
                 (self.data['volume_os'].iloc[o-1] <= self.q25_vol_os) and
                 (self.data['RSI'].iloc[o] < self.q25) and
                 (self.data['ao'].iloc[o-1] < self.data['ao'].iloc[o]) and
-                (self.data['ao'].iloc[o] < self.q25_ao) and 
-                (self.data['close'].iloc[0] < self.q25_close)
+                (self.data['ao'].iloc[o] < self.q25_ao)
                 ):
                     self.buy_for_trading = o
                     self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
@@ -489,6 +489,7 @@ class technical():
                 remove(f)
             save_hist = []
             save_hold_time_temp = []
+            pos_crypt = sorted(pos_crypt)
             for name in tqdm(pos_crypt):
                 self.get_ohlc(name)
                 self.macd()
@@ -506,7 +507,7 @@ class technical():
                 self.trade()
                 # if self.coef_variation != 'nan':
                 save_hist.append(self.coef_variation)
-                if (len(self.data) - self.buy_for_trading < int(len(self.data)/2)):
+                if (len(self.data) - self.buy_for_trading < int(len(self.data)/1.5)):
                     self.plot(name)
                 self.live_trading(name)
                 save_hold_time_temp.append(self.save_time_hold)
