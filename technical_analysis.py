@@ -34,7 +34,7 @@ TODO:
 -convert UTC to PST time
 -change the sell condition to be the crossover points of the MACD or zero crossing of the Awe ind
 """
-SAMPLE_RATE = 15
+SAMPLE_RATE = 30
 logging.basicConfig(filename=join(getcwd(),'errors.log'), level=logging.DEBUG, 
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
 logger=logging.getLogger(__name__)
@@ -222,8 +222,8 @@ class technical():
             self.q75_Stoch_RSI, self.q25_Stoch_RSI = 0,0
     def moving_averages(self):
         self.q75_close, self.q25_close = percentile(self.data['close'].dropna().values, [75 ,25])
-        self.data['ewmshort'] = self.data['close'].ewm(span=25, min_periods=25).mean() #used to be 50
-        self.data['ewmmedium'] = self.data['close'].ewm(span=128, min_periods=128).mean()
+        self.data['ewmshort'] = self.data['close'].ewm(span=20, min_periods=20).mean() #used to be 50
+        self.data['ewmmedium'] = self.data['close'].ewm(span=100, min_periods=100).mean()
         self.data['ewmlong'] = self.data['close'].ewm(span=200, min_periods=200).mean()
     def aroon_ind(self,lb=25):
         """
@@ -265,7 +265,7 @@ class technical():
         self.data.index = date_range(end=datetime.now(),periods=len(self.data.index),freq="15min")
         # xlim_val = [self.data.index[int((24*60)/SAMPLE_RATE)],self.data.index[-1]]
         x_low_lim = self.data.index[-int((24*60)/SAMPLE_RATE)]
-        fig, ax = plt.subplots(5,1,figsize=(15, 20)) 
+        fig, ax = plt.subplots(6,1,figsize=(15, 20)) 
         buy_df = self.data[~self.data['buy'].isnull()]
         sell_df = self.data[~self.data['sell'].isnull()]
         #plot close price
@@ -275,8 +275,8 @@ class technical():
                markersize=1, linestyle='', label = 'Close Price')
         ax[0].plot(self.data.index,self.reg_arr_half,'tab:orange',label = 'linearRegressor')
         ax[0].plot(self.data.index, self.data['ewmlong'], 'black', label = 'long-200')
-        ax[0].plot(self.data.index, self.data['ewmshort'], 'crimson', label = 'short-128')
-        ax[0].plot(self.data.index, self.data['ewmmedium'], 'green', label = 'medium-25')
+        ax[0].plot(self.data.index, self.data['ewmshort'], 'crimson', label = 'short-20')
+        ax[0].plot(self.data.index, self.data['ewmmedium'], 'green', label = 'medium-100')
         ax[0].scatter(self.data.index, self.data['buy'], marker='o', s=120, color = 'g', label = 'buy')
         ax[0].scatter(self.data.index, self.data['buy_no_condition'], marker='o', s=60, color = 'black', label = 'buy_no_open_trade')
         ax[0].scatter(self.data.index, self.data['sell'], marker='o', s=120, color = 'r', label = 'sell')
@@ -287,7 +287,7 @@ class technical():
         # ax[0].set_xlim(left=x_low_lim)
         ax[0].set_xlabel('Date')
         ax[0].set_ylabel('Close Price')
-        #plot macd
+        #plot OBS
         ax[1].plot(self.data.index, self.data['OBV'], 'tab:blue', marker="o",
                         markersize=1, linestyle='-', label = 'OBV diff')
         ax[1].plot(self.data.index, self.reg_obv, 'tab:red', marker="o",
@@ -347,6 +347,17 @@ class technical():
         ax[4].set_xlabel('Date')
         ax[4].set_ylabel('Volume Oscillator')
         ax[4].grid(True)
+        #PLOT MACD
+        ax[5].plot(self.data.index, self.data['macd_diff'], 'tab:blue', marker="o",
+                        markersize=1, linestyle='-', label = 'MACD diff')
+        ax[5].plot(self.data.index, self.data['signal_line'], 'tab:red', marker="o",
+                        markersize=1, linestyle='-', label = 'Signal line')
+        ax[5].fill_between(self.data.index, self.q75_macd, self.q25_macd, color='green',
+                          alpha=0.2,label='IQR range MACD')
+        ax[5].scatter(buy_df.index, buy_df['macd_diff'], marker='o', s=120, color = 'g', label = 'buy')
+        ax[5].scatter(sell_df.index, sell_df['signal_line'], marker='o', s=120, color = 'r', label = 'sell')
+        ax[5].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
+        ax[5].grid(True)
         save_name = name + '.png'
         direct = getcwd()
         final_dir = join(direct, 'technical_analysis', save_name)
@@ -380,15 +391,20 @@ class technical():
                 # (self.coef_variation < self.ub_coef_deter)
                 # (self.coef_variation > self.lb_coef_deter) and #maybe volatitlity is what I want? switching from things within the IQR to things above
                 # (self.coef_variation > self.ub_coef_deter)
-                # (self.obv_reg.coef_[0] > 0) and
-                # (self.data['close'].iloc[0] < self.q25_close)
-                (self.data['OBV'].iloc[o] < self.q25_OBV) and
-                (self.data['volume_os'].iloc[o-1] <= 0) and
-                (self.data['volume_os'].iloc[o] >= self.q75_vol_os) and
-                (self.data['volume_os'].iloc[o-1] <= self.q25_vol_os) and
-                (self.data['RSI'].iloc[o] < self.q25) and
-                (self.data['ao'].iloc[o-1] < self.data['ao'].iloc[o]) and
-                (self.data['ao'].iloc[o] < self.q25_ao)
+                #######################KEEP THIS STRATEGY - IT MAY WORK, JUST NEVER TRADES
+                # (self.data['OBV'].iloc[o] < self.q25_OBV) and
+                # (self.data['volume_os'].iloc[o-1] <= 0) and
+                # (self.data['volume_os'].iloc[o] >= self.q75_vol_os) and
+                # (self.data['volume_os'].iloc[o-1] <= self.q25_vol_os) and
+                # (self.data['RSI'].iloc[o] < self.q25) and
+                # (self.data['ao'].iloc[o-1] < self.data['ao'].iloc[o]) and
+                # (self.data['ao'].iloc[o] < self.q25_ao)
+                #######################
+                (self.data['macd_diff'].iloc[o-1] < self.data['signal_line'].iloc[o-1]) and
+                (self.data['macd_diff'].iloc[o] > self.data['signal_line'].iloc[o]) and
+                (self.data['volume_os'].iloc[o] <= self.q25_vol_os) and
+                (self.data['RSI'].iloc[o] <= self.q25) and
+                (self.data['macd_diff'].iloc[o] <= self.q25_macd) 
                 ):
                     self.buy_for_trading = o
                     self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
@@ -404,10 +420,18 @@ class technical():
             #TODO change the sell condition to zero crossing of the Awe ind
             if (
                 (open_trade == False) and
-                (self.data['RSI'].iloc[o] > self.q75)
+                (self.data['macd_diff'].iloc[o-1] > self.data['signal_line'].iloc[o-1]) and
+                (self.data['macd_diff'].iloc[o] < self.data['signal_line'].iloc[o]) and
+                (self.data['macd_diff'].iloc[o] > self.q75_macd)
+                #I like this
+                # (open_trade == False) and
+                # (self.data['RSI'].iloc[o] > self.q75)
+                # ):
+                # if (
+                # (self.data['RSI'].iloc[o-1] > self.data['RSI'].iloc[o]) or 
+                # (self.data['RSI'].iloc[o-1] ==  self.data['RSI'].iloc[o])
+                # 
                 ):
-                if ((self.data['RSI'].iloc[o-1] > self.data['RSI'].iloc[o]) or 
-                (self.data['RSI'].iloc[o-1] ==  self.data['RSI'].iloc[o])):
                     self.data['sell'].iloc[o] = self.data['close'].iloc[o]
                     simulate_fees_buy = buy_price * 0.0026
                     simulate_fees_sell = self.data['close'].iloc[o] * 0.0026
@@ -468,15 +492,22 @@ class technical():
     def check_sell(self,name,volume_inst,ask_price,threshold,count_iter_hold,thresh_sell):
         curr_ask = float((self.kraken.get_ticker_information(name))['a'][0][0])
         print(f'current ask: {curr_ask} : {threshold} threshold')
-        if  (threshold < curr_ask):
+        if ((self.data['macd_diff'].iloc[-2] > self.data['signal_line'].iloc[-2]) and
+        (self.data['macd_diff'].iloc[-1] < self.data['signal_line'].iloc[-1]) and
+        (self.data['macd_diff'].iloc[-1] > self.q75_macd)
+        ):
             balance = self.kraken.get_account_balance()
             basic_sell(name, self.kraken, volume_inst, balance)
             return 'sold'
-        if (thresh_sell > curr_ask):
-        # if count_iter_hold > self.average_pos_hold:
-            balance = self.kraken.get_account_balance()
-            basic_sell(name, self.kraken, volume_inst, balance)
-            return 'sold'
+        # if  (threshold < curr_ask):
+        #     balance = self.kraken.get_account_balance()
+        #     basic_sell(name, self.kraken, volume_inst, balance)
+        #     return 'sold'
+        # if (thresh_sell > curr_ask):
+        # # if count_iter_hold > self.average_pos_hold:
+        #     balance = self.kraken.get_account_balance()
+        #     basic_sell(name, self.kraken, volume_inst, balance)
+        #     return 'sold'
         return 'not sold'
     def run_analysis_pos_crypt(self):
         self.average_pos_hold = 76
@@ -507,7 +538,7 @@ class technical():
                 self.trade()
                 # if self.coef_variation != 'nan':
                 save_hist.append(self.coef_variation)
-                if (len(self.data) - self.buy_for_trading < int(len(self.data)/1.5)):
+                if (len(self.data) - self.buy_for_trading <(len(self.data)-1)): #int(len(self.data)/1.5)
                     self.plot(name)
                 self.live_trading(name)
                 save_hold_time_temp.append(self.save_time_hold)
