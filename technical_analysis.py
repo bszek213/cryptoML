@@ -28,13 +28,14 @@ from glob import glob
 from psutil import virtual_memory
 import logging
 from scipy.stats import pearsonr
+import sys
 warnings.filterwarnings("ignore")
 """
 TODO: 
 -convert UTC to PST time
 -change the sell condition to be the crossover points of the MACD or zero crossing of the Awe ind
 """
-SAMPLE_RATE = 5
+SAMPLE_RATE = 1440
 logging.basicConfig(filename=join(getcwd(),'errors.log'), level=logging.DEBUG, 
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
 logger=logging.getLogger(__name__)
@@ -451,7 +452,7 @@ class technical():
         trade_now = len(self.data) - self.buy_for_trading
         print(' ') #tqdm things
         print(f'{name} closet trade was {trade_now} iterations ago')
-        if trade_now <= 1:
+        if trade_now < 1:
             try:
                 print(f'buy {name}')
                 #put a buy function here : ad save the thresh and time? 
@@ -517,68 +518,86 @@ class technical():
         self.ub_coef_deter = 60.35
         closet_buy = 720
         closet_name = '1Inch'
-        while True:
-            pos_crypt = self.get_24_above_zero()
-            files = glob(join(getcwd(),'technical_analysis','*'))
-            for f in files:
-                remove(f)
-            save_hist = []
-            save_hold_time_temp = []
-            pos_crypt = sorted(pos_crypt)
-            for name in tqdm(pos_crypt):
-                self.get_ohlc(name)
-                self.macd()
-                self.RSI()
-                self.OBV()
-                self.volume_osc()
-                # self.bollinger_band()
-                # self.stoch_RSI()
-                self.aroon_ind()
-                self.moving_averages()
-                self.awesome_indicator()
-                self.half_LR()
-                self.volatility()
-                # self.correlational_analysis()
-                self.trade()
-                # if self.coef_variation != 'nan':
-                check_latest_trade = len(self.data) - self.buy_for_trading
-                if (check_latest_trade < 700): #int(len(self.data)/1.5)
-                    self.plot(name)
-                self.live_trading(name)
-                if check_latest_trade < closet_buy:
-                    closet_buy = check_latest_trade
-                    closet_name = name
-                print(f'cumulative gain {round(self.cumlative_gained,4)}% after running {name}')
-                print(f'{closet_name} has the closest trade at {closet_buy} iterations')
-                save_hold_time_temp.append(self.save_time_hold)
-                save_hist.append(self.coef_variation)
-                sleep(1)
-            # plt.figure()
-            # plt.hist(save_hist,bins=100)
-            # plt.show()
-            # print(save_hold_time_temp)
-            save_hist_no_nan = [x for x in save_hist if str(x) != 'nan']
-            coeff_var_75, coeff_var_25 = percentile(save_hist_no_nan, 
-                                        [75 ,25])
-                
-            self.lb_coef_deter = coeff_var_25
-            self.ub_coef_deter = coeff_var_75
-            print(f'LB coef determination {self.lb_coef_deter} : UP coef determination {self.ub_coef_deter}')
-            iter_hold_pos = [item for sublist in save_hold_time_temp for item in sublist]
-            try:
-                iter_hold_pos_75,iter_hold_pos_25 = percentile(iter_hold_pos,[75 ,25])
-                print(f'LB_iterations_held {iter_hold_pos_25} : UB_iterations_held {iter_hold_pos_75}')
-            except:
-                iter_hold_pos_75 = 76
-                print(f'Use default hold time of {iter_hold_pos_75}, as percentile of the hold times could not be calculated')
-            self.average_pos_hold = iter_hold_pos_75
-            #print(f'3rd quartile iterations held {self.average_pos_hold}')
-            print(iter_hold_pos_75 * SAMPLE_RATE, 'minutes held')
-            self.cumlative_gained = float(0.0)
-            print(f'% RAM USED: {virtual_memory()[2]}')
-            if virtual_memory()[2] > 95:
-                break
-            sleep(SAMPLE_RATE*60)
+        if sys.argv[1]:
+            print(f'Perform technical analysis on {sys.argv[1]}')
+            self.get_ohlc(sys.argv[1])
+            self.macd()
+            self.RSI()
+            self.OBV()
+            self.volume_osc()
+            # self.bollinger_band()
+            # self.stoch_RSI()
+            self.aroon_ind()
+            self.moving_averages()
+            self.awesome_indicator()
+            self.half_LR()
+            self.volatility()
+            # self.correlational_analysis()
+            self.trade()
+            self.plot(sys.argv[1])
+        else:
+            while True:
+                pos_crypt = self.get_24_above_zero()
+                files = glob(join(getcwd(),'technical_analysis','*'))
+                for f in files:
+                    remove(f)
+                save_hist = []
+                save_hold_time_temp = []
+                pos_crypt = sorted(pos_crypt)
+                for name in tqdm(pos_crypt):
+                    self.get_ohlc(name)
+                    self.macd()
+                    self.RSI()
+                    self.OBV()
+                    self.volume_osc()
+                    # self.bollinger_band()
+                    # self.stoch_RSI()
+                    self.aroon_ind()
+                    self.moving_averages()
+                    self.awesome_indicator()
+                    self.half_LR()
+                    self.volatility()
+                    # self.correlational_analysis()
+                    self.trade()
+                    # if self.coef_variation != 'nan':
+                    check_latest_trade = len(self.data) - self.buy_for_trading
+                    if (check_latest_trade < 700): #int(len(self.data)/1.5)
+                        self.plot(name)
+                    self.live_trading(name)
+                    if check_latest_trade < closet_buy:
+                        closet_buy = check_latest_trade
+                        closet_name = name
+                    print(f'cumulative gain {round(self.cumlative_gained,4)}% after running {name}')
+                    print(f'{closet_name} has the closest trade at {closet_buy} iterations')
+                    save_hold_time_temp.append(self.save_time_hold)
+                    save_hist.append(self.coef_variation)
+                    sleep(1)
+                # plt.figure()
+                # plt.hist(save_hist,bins=100)
+                # plt.show()
+                # print(save_hold_time_temp)
+                save_hist_no_nan = [x for x in save_hist if str(x) != 'nan']
+                coeff_var_75, coeff_var_25 = percentile(save_hist_no_nan, 
+                                            [75 ,25])
+                    
+                self.lb_coef_deter = coeff_var_25
+                self.ub_coef_deter = coeff_var_75
+                print(f'LB coef determination {self.lb_coef_deter} : UP coef determination {self.ub_coef_deter}')
+                iter_hold_pos = [item for sublist in save_hold_time_temp for item in sublist]
+                try:
+                    iter_hold_pos_75,iter_hold_pos_25 = percentile(iter_hold_pos,[75 ,25])
+                    print(f'LB_iterations_held {iter_hold_pos_25} : UB_iterations_held {iter_hold_pos_75}')
+                except:
+                    iter_hold_pos_75 = 76
+                    print(f'Use default hold time of {iter_hold_pos_75}, as percentile of the hold times could not be calculated')
+                self.average_pos_hold = iter_hold_pos_75
+                #print(f'3rd quartile iterations held {self.average_pos_hold}')
+                print(iter_hold_pos_75 * SAMPLE_RATE, 'minutes held')
+                self.cumlative_gained = float(0.0)
+                print(f'% RAM USED: {virtual_memory()[2]}')
+                if virtual_memory()[2] > 95:
+                    break
+                sleep(SAMPLE_RATE*60)
 def main():
     technical().run_analysis_pos_crypt()
 if __name__ == "__main__":
