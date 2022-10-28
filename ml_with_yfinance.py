@@ -24,8 +24,9 @@ from tqdm import tqdm
 # import multiprocessing as mp
 from scipy.signal import savgol_filter
 from urllib3 import PoolManager
-from candlestick import get_ohlc
 from time import sleep
+import krakenex
+from pykrakenapi import KrakenAPI
 """
 TODO
 1. ensemble modeling - add arima and other forecasters as a well of getting 
@@ -36,7 +37,42 @@ def set_crypt_names():
     df = read_csv(os.path.join(location,'crypto_trade_min.csv'))
     df.sort_values(by=['crypto'],inplace=True)
     return df['crypto']
-                     
+
+def get_ohlc(crypt,sample_rate=1440):
+    """
+    Parameters
+    ----------
+    kraken : Kraken object
+        DESCRIPTION.
+    crypt : crypto str name
+        DESCRIPTION.
+    inter : int variable - sampling window
+        time frame interval minutes 1 (default), 5, 15, 30, 60, 240, 1440, 10080, 21600.
+        ((((((((((((((((((sampling time in UTC time zone))))))))))))))))))
+    Returns
+    -------
+    Pandas df 
+        close, high, low prices.
+    """
+    if crypt == "APE3":
+        crypt = "APE"
+    if crypt == "LUNA1":
+        crypt = "LUNA"
+    crypt = crypt + 'USD'
+    api = krakenex.API()
+    api.load_key('key.txt')
+    kraken = KrakenAPI(api)
+    ohlc = None
+    while True:
+        try:
+            ohlc = kraken.get_ohlc_data(crypt, interval = sample_rate, since = 0,
+                                        ascending = True) #returns two years of data7
+        except Exception as e:
+            print(f'getohlc() timed out from internet connection: {e}')
+        if ohlc is not None:
+            break
+    # self.ohlc_no_param = ohlc[0]
+    return ohlc[0]
 def set_data(crypt):
     # crypt_name = sys.argv[1] + '-USD'
     crypt_name = crypt + '-USD'
@@ -61,6 +97,41 @@ def running_coeff_deter(inst_data):
     day_30_mean = inst_data['close'].rolling(30).mean()
     inst_data['coeff_7_day'] = day_7_std / day_7_mean
     inst_data['coeff_30_day'] = day_30_std / day_30_mean
+    return inst_data
+
+def RSI(inst_data):
+    inst_data['change'] = inst_data.close.diff()
+    # crypto_df['U'] = [x if x > 0 else 0 for x in crypto_df.change]
+    # crypto_df['D'] = [abs(x) if x < 0 else 0 for x in crypto_df.change]
+    inst_data['U']  = inst_data['change'].clip(lower=0)
+    inst_data['D'] = -1*inst_data['change'].clip(upper=0)
+    inst_data['U'] = inst_data.U.ewm(span=14,
+               min_periods=13).mean()
+    inst_data['D'] = inst_data.D.ewm(span=14,
+               min_periods=13).mean()
+    inst_data['RS'] = inst_data.U / inst_data.D
+    inst_data['RSI'] = 100 - (100/(1+inst_data.RS))
+    inst_data['RSI'] = inst_data['RSI'].rolling(3).mean()
+    #calculate the percentile
+    try:
+        q75, q25 = percentile(inst_data['RSI'].dropna().values, [75 ,25])
+        #calculate an upper bound: Q3 + .2 *IQR
+    except:
+        print('IndexError: cannot do a non-empty take from an empty axes. default to 0')
+        q75, q25, = 0,0
+    return inst_data
+
+def stoch_RSI(inst_data):
+    min_val  = inst_data['RSI'].rolling(window=14, center=False).min()
+    max_val = inst_data['RSI'].rolling(window=14, center=False).max()
+    inst_data['Stoch_RSI'] = ((inst_data['RSI'] - min_val) / (max_val - min_val)) * 100
+    inst_data['Stoch_RSI'] = inst_data['Stoch_RSI'].rolling(3).mean()
+    try:
+        q75_Stoch_RSI, q25_Stoch_RSI = percentile(inst_data['Stoch_RSI'].dropna().values, 
+                                                            [75 ,25])
+    except:
+        print('IndexError: cannot do a non-empty take from an empty axes. default to 0')
+        q75_Stoch_RSI, q25_Stoch_RSI = 0,0
     return inst_data
 
 def volatility(inst_data):
@@ -122,6 +193,8 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     fig2 = final.plot(forecast)
     plt.ylabel('Cumulative Log Returns') #'Cumulative percent change (1.0=100%)'
     kraken_data, q25, q75 = macd(inst_data,crypt)
+    kraken_data = RSI(kraken_data)
+    kraken_data = stoch_RSI(kraken_data)
     #Calculate MAPE of predicted to actual
     forecast_test = final.predict(inst_data)
     mape_error = abs(mean((abs(inst_data['y'].values - forecast_test['yhat'].values) / inst_data['y'].values) * 100))

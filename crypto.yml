@@ -1,4 +1,4 @@
-name: crypto
+name: cryptoML
 channels:
 - conda-forge
 - robostack
