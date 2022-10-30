@@ -23,7 +23,7 @@ python candlestick.py
 ![alt text](https://github.com/bszek213/cryptoML/blob/dev/forecast_ML/BTC/BTC.png)
 
 ### Sample Output from the Technical Analysis
-![alt text](https://github.com/bszek213/cryptoML/blob/dev/technical_analysis/BTCUSD.svg)
+![alt text](https://github.com/bszek213/cryptoML/blob/dev/technical_analysis/BTCUSD.png)
 
 ## Top 10 performing Cryptos
 ```bash
