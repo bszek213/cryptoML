@@ -151,7 +151,8 @@ class technical():
             self.data['OBV'].iloc[i] = OBV_iter
     
         #linear regression
-        data_len = int((24*60)/SAMPLE_RATE)
+        self.obv_reg_sample = 730
+        data_len = int((self.obv_reg_sample*60)/SAMPLE_RATE) #inputs should be 24 hours or 730 hours (1 month)
         a_list = list(arange(len(self.data)-data_len,len(self.data)))
         X1 = array(a_list)
         X = X1.reshape(-1, 1)
@@ -304,7 +305,7 @@ class technical():
         ax[1].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
         ax[1].legend()
         ax[1].grid(True)
-        title_obs = f'reg last 24 hours OBV: {self.obv_reg.coef_[0]}'
+        title_obs = f'reg last {self.obv_reg_sample} hours OBV: {self.obv_reg.coef_[0]}'
         ax[1].set_title(title_obs)
         # ax[1].set_xlim(x_low_lim)
         ax[1].set_xlabel('Date')
@@ -359,6 +360,7 @@ class technical():
         ax[5].scatter(buy_df.index, buy_df['macd_diff'], marker='o', s=120, color = 'g', label = 'buy')
         ax[5].scatter(sell_df.index, sell_df['signal_line'], marker='o', s=120, color = 'r', label = 'sell')
         ax[5].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
+        ax[5].legend()
         ax[5].grid(True)
         save_name = name + '.png'
         direct = getcwd()
