@@ -268,12 +268,12 @@ class technical():
         time_increment = str(SAMPLE_RATE) + "min"
         self.data.index = date_range(end=datetime.now(),periods=len(self.data.index),freq=time_increment)
         # xlim_val = [self.data.index[int((24*60)/SAMPLE_RATE)],self.data.index[-1]]
-        x_low_lim = self.data.index[-int((24*60)/SAMPLE_RATE)]
+        x_low_lim = self.data.index[-int((self.obv_price_reg_sample*60)/SAMPLE_RATE)]
         fig, ax = plt.subplots(6,1,figsize=(15, 20)) 
         buy_df = self.data[~self.data['buy'].isnull()]
         sell_df = self.data[~self.data['sell'].isnull()]
         #plot close price
-        str_name = f'{name} : % gain/lost: {self.gain_lost} | {round(self.coef_variation,4)} coeff of variation : LinReg coef: {self.reg_coef} | fit error: {self.MAPE}%'
+        str_name = f'{name} : % gain/lost: {self.gain_lost} | {round(self.coef_variation,4)} coeff of variation : LinReg coef: {self.reg_coef[0]} | fit error: {self.MAPE}%'
         ax[0].set_title(str_name)
         ax[0].plot(self.data.index,self.data['close'],'tab:blue', marker="o",
                markersize=1, linestyle='', label = 'Close Price')
