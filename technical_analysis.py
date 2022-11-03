@@ -47,6 +47,7 @@ class technical():
         self.kraken = KrakenAPI(api)
         self.total_trades = 0
         self.cumlative_gained = float(0.0)
+        self.obv_price_reg_sample = 730
     def readin_cryptos(self):
         direct = getcwd()
         location = join(direct, 'crypto_trade_min_kraken.csv')
@@ -101,7 +102,7 @@ class technical():
         # self.ohlc_no_param = ohlc[0]
         self.data = ohlc[0] 
     def half_LR(self):
-        data_len = int((24*60)/SAMPLE_RATE) #get samples out of 24 hours
+        data_len = int((self.obv_price_reg_sample*60)/SAMPLE_RATE) #get samples out of 24 hours
          # = total_samples #last 30 days + the 30 day prediction
         a_list = list(arange(len(self.data)-data_len,len(self.data)))
         X1 = array(a_list)
@@ -151,8 +152,7 @@ class technical():
             self.data['OBV'].iloc[i] = OBV_iter
     
         #linear regression
-        self.obv_reg_sample = 730
-        data_len = int((self.obv_reg_sample*60)/SAMPLE_RATE) #inputs should be 24 hours or 730 hours (1 month)
+        data_len = int((self.obv_price_reg_sample*60)/SAMPLE_RATE) #inputs should be 24 hours or 730 hours (1 month)
         a_list = list(arange(len(self.data)-data_len,len(self.data)))
         X1 = array(a_list)
         X = X1.reshape(-1, 1)
@@ -188,7 +188,8 @@ class technical():
         self.data['macd_diff'] = self.data['sma_2'] - self.data['sma_1']
         self.data['signal_line'] = self.data['macd_diff'].ewm(span=9,
                                                               min_periods=9-1).mean()
-        self.q75_macd, self.q25_macd = percentile(self.data['macd_diff'].dropna().values, 
+        half = int(len(self.data)/2)
+        self.q75_macd, self.q25_macd = percentile(self.data['macd_diff'].iloc[-half:].dropna().values, 
                                     [75 ,25])
     def RSI(self):
         self.data['change'] = self.data.close.diff()
@@ -267,12 +268,12 @@ class technical():
         time_increment = str(SAMPLE_RATE) + "min"
         self.data.index = date_range(end=datetime.now(),periods=len(self.data.index),freq=time_increment)
         # xlim_val = [self.data.index[int((24*60)/SAMPLE_RATE)],self.data.index[-1]]
-        x_low_lim = self.data.index[-int((24*60)/SAMPLE_RATE)]
+        x_low_lim = self.data.index[-int((self.obv_price_reg_sample*60)/SAMPLE_RATE)]
         fig, ax = plt.subplots(6,1,figsize=(15, 20)) 
         buy_df = self.data[~self.data['buy'].isnull()]
         sell_df = self.data[~self.data['sell'].isnull()]
         #plot close price
-        str_name = f'{name} : % gain/lost: {self.gain_lost} | {round(self.coef_variation,4)} coeff of variation : fit error: {self.MAPE}%'
+        str_name = f'{name} : % gain/lost: {self.gain_lost} | {round(self.coef_variation,4)} coeff of variation : LinReg coef: {self.reg_coef[0]} | fit error: {self.MAPE}%'
         ax[0].set_title(str_name)
         ax[0].plot(self.data.index,self.data['close'],'tab:blue', marker="o",
                markersize=1, linestyle='', label = 'Close Price')
@@ -305,7 +306,7 @@ class technical():
         ax[1].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
         ax[1].legend()
         ax[1].grid(True)
-        title_obs = f'reg last {self.obv_reg_sample} hours OBV: {self.obv_reg.coef_[0]}'
+        title_obs = f'reg last {self.obv_price_reg_sample} hours OBV: {self.obv_reg.coef_[0]}'
         ax[1].set_title(title_obs)
         # ax[1].set_xlim(x_low_lim)
         ax[1].set_xlabel('Date')
