@@ -5,15 +5,15 @@ LSTM price predictions
 Should this be on the price or the cumulative log transform?
 @author: bszekely
 """
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import krakenex
 from pykrakenapi import KrakenAPI
 import yfinance as yf
 from pandas import DataFrame, to_datetime, date_range, Timedelta
 import sys
-from numpy import isnan, array, mean, nan
+from numpy import isnan, array, mean, nan, log2
 import tensorflow as tf
-from tensorflow import keras
+# from tensorflow import keras
 # from tensorflow.keras.layers import Bidirectional, Dropout, Activation, Dense, LSTM
 from tensorflow.python.keras.layers import CuDNNLSTM
 from tensorflow.keras.models import Sequential
@@ -23,6 +23,10 @@ from keras.layers import Input, LSTM, Dense, TimeDistributed, Activation, BatchN
 # from keras.layers import CuDNNLSTM
 from time import sleep
 import matplotlib.pyplot as plt
+# from fitter import Fitter
+"""
+TODO: Remove outliers?
+"""
 SAMPLE_RATE = 1440
 DROPOUT = 0.2 #Prevent overfitting
 LOOKBACK = 60
@@ -43,10 +47,27 @@ class lstmPrediction():
         self.data = temp.history(period = 'max', interval="1d")
     def preprocess(self):
         close_price_reshape = self.data.Close.values.reshape(-1,1)
+        #min max scale
         self.scaler = MinMaxScaler()
         self.scaled_data = self.scaler.fit_transform(close_price_reshape)
         self.scaled_data = self.scaled_data[~isnan(self.scaled_data)]
         self.scaled_data = self.scaled_data.reshape(-1,1)
+        #standard scale
+        # self.scaler = FunctionTransformer(log2,validate=True)
+        # self.scaled_data = self.scaler.fit_transform(close_price_reshape)
+        # self.scaled_data = self.scaled_data[~isnan(self.scaled_data)]
+        # self.scaled_data = self.scaled_data.reshape(-1,1)
+        # #log transform scale
+        # self.scaled_data_log = log(close_price_reshape)
+        # self.scaled_data_log = self.scaled_data_log[~isnan(self.scaled_data_log)]
+        # self.scaled_data_log = self.scaled_data_log.reshape(-1,1)
+        # find_hist = Fitter(close_price_reshape)
+        # find_hist.fit()
+        # print(find_hist.get_best(method='ks_pvalue'))
+        # plt.figure()
+        # find_hist.summary()
+        # plt.show()
+        # plt.legend(['minMax','l2','log2'])
     def split_data(self):
         self.sequences()
         # num_train = int(0.95 * self.sequence_data.shape[0])
@@ -102,6 +123,7 @@ class lstmPrediction():
         X_ = X_.reshape(1, LOOKBACK, 1)
         self.Y_ = self.model.predict(X_).reshape(-1, 1)
         self.Y_ = self.scaler.inverse_transform(self.Y_)
+        # self.Y_ = 2**self.Y_
         # self.model.evaluate(self.x_test,self.y_test)
         # self.y_hat = self.model.predict(self.x_test)
         # self.y_test_price = self.scaler.inverse_transform(self.y_test)
