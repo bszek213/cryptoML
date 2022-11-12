@@ -11,6 +11,7 @@ from pykrakenapi import KrakenAPI
 import yfinance as yf
 from pandas import DataFrame, to_datetime, date_range, Timedelta
 import sys
+import os
 from numpy import isnan, array, mean, nan, log2
 import tensorflow as tf
 # from tensorflow import keras
@@ -151,7 +152,7 @@ class lstmPrediction():
         df_future['Actual'] = nan
         results = df_past.append(df_future).set_index('Date')
         csv_save = f"{sys.argv[1]}_future_lstm.csv"
-        results.to_csv(csv_save)
+        results.to_csv(os.path.join(os.getcwd(),'lstm_data',csv_save))
         print(results)
         ax = results.plot()
         ax.set_ylabel('Close Price ($)')
