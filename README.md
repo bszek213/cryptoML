@@ -29,15 +29,15 @@ python candlestick.py
 ```bash
    crypto    reg_coef  MACD_cross_buy  MACD_cross_sell
 9    COMP  0.114029           False            False
-23   MANA  0.031019           False            False
-36   SAND  0.028251           False            False
-32    RLC  0.019631           False            False
-14    FIS  0.018038           False            False
-29  POLIS  0.017638           False            False
-31    REP  0.016150           False            False
-42    XTZ  0.013699           False            False
-10    CRV  0.012676           False            False
-3    ANKR  0.011565           False            False
+16   GALA  0.036877           False            False
+19   KP3R  0.030702           False            False
+23   MANA  0.027088           False            False
+34   SAND  0.024184           False            False
+28  POLIS  0.019872           False            False
+30    RLC  0.017565           False            False
+14    FIS  0.016617           False            False
+29    REP  0.014707           False            False
+10    CRV  0.012911           False            False
 ```
 ## Candlestick Results
 run candlestick analysis before 5pm PDT, as the sample rates are on UTC time. The
