@@ -275,8 +275,6 @@ class technical():
         #plot close price
         str_name = f'{name} : % gain/lost: {self.gain_lost} | {round(self.coef_variation,4)} coeff of variation : LinReg coef: {self.reg_coef[0]} | fit error: {self.MAPE}%'
         ax[0].set_title(str_name)
-        ax[0].plot(self.data.index,self.data['close'],'tab:blue', marker="o",
-               markersize=1, linestyle='', label = 'Close Price')
         ax[0].plot(self.data.index,self.reg_arr_half,'tab:orange',label = 'linearRegressor')
         ax[0].plot(self.data.index, self.data['ewmlong'], 'black', label = 'long-200')
         ax[0].plot(self.data.index, self.data['ewmshort'], 'crimson', label = 'short-20')
@@ -286,6 +284,8 @@ class technical():
         ax[0].scatter(self.data.index, self.data['sell'], marker='o', s=120, color = 'r', label = 'sell')
         ax[0].fill_between(self.data.index, self.q25_close, self.q75_close, color='black',
                       alpha=0.25)
+        ax[0].plot(self.data.index,self.data['close'],'tab:blue', marker="o",
+               markersize=1, linestyle='', label = 'Close Price')
         ax[0].legend()
         ax[0].grid(True)
         # ax[0].set_xlim(left=x_low_lim)
@@ -521,7 +521,7 @@ class technical():
         self.ub_coef_deter = 60.35
         closet_buy = 720
         closet_name = '1Inch'
-        if sys.argv[1]:
+        if sys.argv[1] != 'all':
             print(f'Perform technical analysis on {sys.argv[1]}')
             self.get_ohlc(sys.argv[1])
             self.macd()

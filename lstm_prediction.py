@@ -25,7 +25,8 @@ from time import sleep
 import matplotlib.pyplot as plt
 # from fitter import Fitter
 """
-TODO: Remove outliers?
+TODO: add more features: volume, close price, opem, close, and maybe technical
+indicators like RSI/
 """
 SAMPLE_RATE = 1440
 DROPOUT = 0.2 #Prevent overfitting
