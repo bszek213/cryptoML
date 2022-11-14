@@ -47,13 +47,16 @@ class lstmPrediction():
         crypt_name = crypt + '-USD'
         temp = yf.Ticker(crypt_name)
         self.data = temp.history(period = 'max', interval="1d")
+        print('yahoo price data: ',self.data)
     def preprocess(self):
-        close_price_reshape = self.data.Close.values.reshape(-1,1)
+        #get features
+        self.input_data = self.data[['Close','Volume']]#.values.reshape(-1,1)
+        # volume_reshape = self.data.Volume.values.reshape(-1,1)
         #min max scale
         self.scaler = MinMaxScaler()
-        self.scaled_data = self.scaler.fit_transform(close_price_reshape)
-        self.scaled_data = self.scaled_data[~isnan(self.scaled_data)]
-        self.scaled_data = self.scaled_data.reshape(-1,1)
+        self.scaled_data = self.scaler.fit_transform(self.input_data)
+        # self.scaled_data = self.scaled_data[~isnan(self.scaled_data)] 
+        # self.scaled_data = self.scaled_data.reshape(-1,1)
         #standard scale
         # self.scaler = FunctionTransformer(log2,validate=True)
         # self.scaled_data = self.scaler.fit_transform(close_price_reshape)
@@ -81,27 +84,20 @@ class lstmPrediction():
         X = []
         Y = []
         for i in range(LOOKBACK, len(self.scaled_data) - FORECAST + 1):
-            X.append(self.scaled_data[i - LOOKBACK: i])
-            Y.append(self.scaled_data[i: i + FORECAST])
+            X.append(self.scaled_data[i - LOOKBACK: i, 0:self.input_data.shape[1]])
+            Y.append(self.scaled_data[  i+FORECAST-1:i+FORECAST,0]) #may need to change idx to [i+future-1:i+future,0]
         self.x_train = array(X)
-        self.y_train = array(Y)
+        self.y_train = array(Y) 
+        print(self.x_train.shape)
+        print(self.y_train.shape)
         # d = []
         # for index in range(len(self.scaled_data)-SEQ_LEN):
         #     d.append(self.scaled_data[index: index + SEQ_LEN])
         # self.sequence_data = array(d)
     def machine(self):
-        # self.model = Sequential()
-        # self.model.add(Bidirectional(LSTM(WINDOW_SIZE, return_sequences=True),
-        #                         input_shape=(WINDOW_SIZE,self.x_train.shape[-1])))
-        # self.model.add(Dropout(rate=DROPOUT))
-        # self.model.add(Bidirectional(LSTM(WINDOW_SIZE*2, return_sequences=True)))
-        # self.model.add(Dropout(rate=DROPOUT))
-        # self.model.add(Bidirectional(LSTM(WINDOW_SIZE, return_sequences=False)))
-        # self.model.add(Dense(units=1))
-        # self.model.add(Activation('linear'))
-        # self.model.compile(loss='mean_squared_error',optimizer='adam')
         self.model = Sequential()
-        self.model.add((LSTM(units=30, return_sequences=True, activation='relu', input_shape=(LOOKBACK, self.x_train.shape[-1]))))
+        # self.model.add((LSTM(units=30, return_sequences=True, activation='relu', input_shape=(LOOKBACK, self.x_train.shape[-1]))))
+        self.model.add((LSTM(units=30, return_sequences=True, activation='relu', input_shape=(self.x_train.shape[1], self.x_train.shape[2]))))
         # self.model.add(Dropout(rate=DROPOUT))
         self.model.add((LSTM(units=30,activation='relu',return_sequences=True)))
         self.model.add(Dropout(rate=DROPOUT))
@@ -112,6 +108,7 @@ class lstmPrediction():
         self.model.add(Dense(FORECAST))
         self.model.add(Activation('linear'))
         self.model.compile(loss='mean_squared_error',optimizer='adam')
+        es = tf.keras.callbacks.EarlyStopping(monitor='loss',patience=15,restore_best_weights=True)
         self.model.summary()
         self.history = self.model.fit(
             self.x_train,
@@ -119,12 +116,14 @@ class lstmPrediction():
             epochs=100,
             batch_size=BATCH_SIZE,
             shuffle=False,
-            validation_split=0.1)
+            validation_split=0.1,
+            callbacks=[es])
         #Predict Forecast
         X_ = self.scaled_data[-LOOKBACK:]  # last available input sequence
-        X_ = X_.reshape(1, LOOKBACK, 1)
+        # X_ = X_.reshape(1, LOOKBACK, 1)
         self.Y_ = self.model.predict(X_).reshape(-1, 1)
         self.Y_ = self.scaler.inverse_transform(self.Y_)
+        
         # self.Y_ = 2**self.Y_
         # self.model.evaluate(self.x_test,self.y_test)
         # self.y_hat = self.model.predict(self.x_test)

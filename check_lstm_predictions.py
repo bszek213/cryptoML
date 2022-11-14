@@ -2,8 +2,10 @@ import pandas as pd
 import yfinance as yf
 import matplotlib.pyplot as plt
 import sys
+import os
 csv_name = f'{sys.argv[1]}_future_lstm.csv'
-btc_price = pd.read_csv(csv_name)
+final_dir = os.path.join(os.getcwd(), 'lstm_data', csv_name)
+btc_price = pd.read_csv(final_dir)
 crypt = f'{sys.argv[1]}-USD'
 temp = yf.Ticker(crypt)
 data = temp.history(period = 'max', interval="1d")

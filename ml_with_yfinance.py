@@ -87,7 +87,8 @@ def convert_to_panda(inst_data):
     inst_data['log_return_sum'] = temp.cumsum()
     # inst_data['simple_return_values'] = inst_data['Close'].pct_change().cumsum()#(inst_data['Close'].shift()-inst_data['Close']) / inst_data['Close'] #Simple return 
     inst_data.dropna(inplace=True)
-    df = DataFrame(list(zip(inst_data['log_return_sum'],inst_data.index)),columns = ['y', 'ds'])
+    # df = DataFrame(list(zip(inst_data.Close,inst_data.index,inst_data.Volume,inst_data.Open,inst_data.Low,inst_data.High)),columns = ['y', 'ds','Volume','Open','Low','High'])
+    df = DataFrame(list(zip(inst_data.log_return_sum,inst_data.index)),columns = ['y', 'ds'])
     return df
 
 def running_coeff_deter(inst_data):
@@ -184,8 +185,11 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
                   holidays_prior_scale=holiday,
                   seasonality_mode=seasonality_mode)
     mod.add_country_holidays(country_name='US')
+    # mod.add_regressor('High',standardize=True)
+    # mod.add_regressor('Low',standardize=True)
+    # mod.add_regressor('Open',standardize=True)
+    # mod.add_regressor('Volume',standardize=True)
     final = mod.fit(inst_data)
-    
     #Collect error - add ability to collect the average error across all horizons, then get the average error among all cryptos, if the error is below the average then buy crypto (it will be another condition)
     future = final.make_future_dataframe(periods=per_for, freq='D') #predict next 30 days
     forecast = final.predict(future)

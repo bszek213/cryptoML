@@ -517,8 +517,8 @@ class technical():
         return 'not sold'
     def run_analysis_pos_crypt(self):
         self.average_pos_hold = 76
-        self.lb_coef_deter = 18.75
-        self.ub_coef_deter = 60.35
+        self.lb_coef_deter = -35
+        self.ub_coef_deter = -8
         closet_buy = 720
         closet_name = '1Inch'
         if sys.argv[1] != 'all':
