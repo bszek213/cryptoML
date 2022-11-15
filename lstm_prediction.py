@@ -12,7 +12,7 @@ import yfinance as yf
 from pandas import DataFrame, to_datetime, date_range, Timedelta
 import sys
 import os
-from numpy import isnan, array, mean, nan, log2
+from numpy import isnan, array, mean, nan, log2, column_stack
 import tensorflow as tf
 # from tensorflow import keras
 # from tensorflow.keras.layers import Bidirectional, Dropout, Activation, Dense, LSTM
@@ -34,7 +34,7 @@ DROPOUT = 0.2 #Prevent overfitting
 LOOKBACK = 60
 FORECAST = 30
 WINDOW_SIZE = FORECAST - 1
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 class lstmPrediction():
     def __init__(self):
         print("initialize lstm class")
@@ -50,11 +50,15 @@ class lstmPrediction():
         print('yahoo price data: ',self.data)
     def preprocess(self):
         #get features
-        self.input_data = self.data[['Close','Volume']]#.values.reshape(-1,1)
+        features = ['Close','High']
+        self.input_data = self.data[features]#.values.reshape(-1,1)
         # volume_reshape = self.data.Volume.values.reshape(-1,1)
         #min max scale
-        self.scaler = MinMaxScaler()
-        self.scaled_data = self.scaler.fit_transform(self.input_data)
+        self.scaler1 = MinMaxScaler()
+        self.scaler2 = MinMaxScaler()
+        self.scaled_price = self.scaler1.fit_transform(self.input_data[features[0]].to_numpy().reshape(-1, 1))
+        self.scaled_volume = self.scaler2.fit_transform(self.input_data[features[1]].to_numpy().reshape(-1, 1))
+        self.scaled_data = column_stack((self.scaled_price,self.scaled_volume))
         # self.scaled_data = self.scaled_data[~isnan(self.scaled_data)] 
         # self.scaled_data = self.scaled_data.reshape(-1,1)
         #standard scale
@@ -97,23 +101,26 @@ class lstmPrediction():
     def machine(self):
         self.model = Sequential()
         # self.model.add((LSTM(units=30, return_sequences=True, activation='relu', input_shape=(LOOKBACK, self.x_train.shape[-1]))))
-        self.model.add((LSTM(units=30, return_sequences=True, activation='relu', input_shape=(self.x_train.shape[1], self.x_train.shape[2]))))
+        self.model.add((LSTM(units=10, return_sequences=True, activation='relu', input_shape=(self.x_train.shape[1], self.x_train.shape[2]))))
         # self.model.add(Dropout(rate=DROPOUT))
-        self.model.add((LSTM(units=30,activation='relu',return_sequences=True)))
-        self.model.add(Dropout(rate=DROPOUT))
-        self.model.add((LSTM(units=30, activation='tanh',return_sequences=True)))
-        self.model.add(Dropout(rate=DROPOUT))
-        self.model.add((LSTM(units=30, activation='tanh')))
+        # self.model.add((LSTM(units=10,activation='relu',return_sequences=True)))
+        # self.model.add(Dropout(rate=DROPOUT))
+        # self.model.add((LSTM(units=5, activation='relu',return_sequences=True)))
+        # self.model.add(Dropout(rate=DROPOUT))
+        # self.model.add((LSTM(units=5, activation='relu',return_sequences=True)))
+        # self.model.add(Dropout(rate=DROPOUT))
+        self.model.add((LSTM(units=5, activation='linear')))
         self.model.add(Dropout(rate=DROPOUT))
         self.model.add(Dense(FORECAST))
         self.model.add(Activation('linear'))
         self.model.compile(loss='mean_squared_error',optimizer='adam')
         es = tf.keras.callbacks.EarlyStopping(monitor='loss',patience=15,restore_best_weights=True)
         self.model.summary()
+        print(f'length of data: {self.x_train.shape}. Make sure the num of parameters is not larger than samples')
         self.history = self.model.fit(
             self.x_train,
             self.y_train,
-            epochs=100,
+            epochs=10,
             batch_size=BATCH_SIZE,
             shuffle=False,
             validation_split=0.1,
@@ -121,9 +128,9 @@ class lstmPrediction():
         #Predict Forecast
         X_ = self.scaled_data[-LOOKBACK:]  # last available input sequence
         # X_ = X_.reshape(1, LOOKBACK, 1)
+        X_ = X_.reshape(1, self.x_train.shape[1],self.x_train.shape[2])
         self.Y_ = self.model.predict(X_).reshape(-1, 1)
-        self.Y_ = self.scaler.inverse_transform(self.Y_)
-        
+        self.Y_ = self.scaler1.inverse_transform(self.Y_)
         # self.Y_ = 2**self.Y_
         # self.model.evaluate(self.x_test,self.y_test)
         # self.y_hat = self.model.predict(self.x_test)
