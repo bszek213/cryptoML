@@ -29,13 +29,14 @@ from psutil import virtual_memory
 import logging
 from scipy.stats import pearsonr
 import sys
+from datetime import datetime
 warnings.filterwarnings("ignore")
 """
 TODO: 
 -convert UTC to PST time
 -change the sell condition to be the crossover points of the MACD or zero crossing of the Awe ind
 """
-SAMPLE_RATE = 1440
+SAMPLE_RATE = 240 #keep at 1440
 logging.basicConfig(filename=join(getcwd(),'errors.log'), level=logging.DEBUG, 
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
 logger=logging.getLogger(__name__)
@@ -273,6 +274,8 @@ class technical():
         buy_df = self.data[~self.data['buy'].isnull()]
         sell_df = self.data[~self.data['sell'].isnull()]
         #plot close price
+        now = datetime.now()
+        current_time = now.strftime("%H:%M:%S")
         str_name = f'{name} : % gain/lost: {self.gain_lost} | {round(self.coef_variation,4)} coeff of variation : LinReg coef: {self.reg_coef[0]} | fit error: {self.MAPE}%'
         ax[0].set_title(str_name)
         ax[0].plot(self.data.index,self.reg_arr_half,'tab:orange',label = 'linearRegressor')
@@ -286,6 +289,7 @@ class technical():
                       alpha=0.25)
         ax[0].plot(self.data.index,self.data['close'],'tab:blue', marker="o",
                markersize=1, linestyle='', label = 'Close Price')
+        ax[0].text(self.data.index[-1], self.data['close'].iloc[-1],current_time, fontsize = 11)
         ax[0].legend()
         ax[0].grid(True)
         # ax[0].set_xlim(left=x_low_lim)
@@ -598,6 +602,7 @@ class technical():
                 print(iter_hold_pos_75 * SAMPLE_RATE, 'minutes held')
                 self.cumlative_gained = float(0.0)
                 print(f'% RAM USED: {virtual_memory()[2]}')
+                print(f'Current sample rate: {SAMPLE_RATE}')
                 if virtual_memory()[2] > 95:
                     break
                 sleep(SAMPLE_RATE*60)
