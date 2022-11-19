@@ -277,18 +277,35 @@ class technical():
         now = datetime.now()
         current_time = now.strftime("%H:%M:%S")
         str_name = f'{name} : % gain/lost: {self.gain_lost} | {round(self.coef_variation,4)} coeff of variation : LinReg coef: {self.reg_coef[0]} | fit error: {self.MAPE}%'
+        width = .15
+        width2 = .01
+        #define up and down prices
+        up = self.data[self.data.close>=self.data.open]
+        down = self.data[self.data.close<self.data.open]
+        #define colors to use
+        col1 = 'green'
+        col2 = 'red'
+        #plot up prices
+        ax[0].bar(up.index,up.close-up.open,width,bottom=up.open,color=col1)
+        ax[0].bar(up.index,up.high-up.close,width2,bottom=up.close,color=col1)
+        ax[0].bar(up.index,up.low-up.open,width2,bottom=up.open,color=col1)
+        #plot down prices
+        ax[0].bar(down.index,down.close-down.open,width,bottom=down.open,color=col2)
+        ax[0].bar(down.index,down.high-down.open,width2,bottom=down.open,color=col2)
+        ax[0].bar(down.index,down.low-down.close,width2,bottom=down.close,color=col2)
+        
         ax[0].set_title(str_name)
-        ax[0].plot(self.data.index,self.reg_arr_half,'tab:orange',label = 'linearRegressor')
-        ax[0].plot(self.data.index, self.data['ewmlong'], 'black', label = 'long-200')
-        ax[0].plot(self.data.index, self.data['ewmshort'], 'crimson', label = 'short-20')
-        ax[0].plot(self.data.index, self.data['ewmmedium'], 'green', label = 'medium-100')
-        ax[0].scatter(self.data.index, self.data['buy'], marker='o', s=120, color = 'g', label = 'buy')
-        ax[0].scatter(self.data.index, self.data['buy_no_condition'], marker='o', s=60, color = 'black', label = 'buy_no_open_trade')
-        ax[0].scatter(self.data.index, self.data['sell'], marker='o', s=120, color = 'r', label = 'sell')
+        # ax[0].plot(self.data.index,self.reg_arr_half,'tab:orange',label = 'linearRegressor')
+        # ax[0].plot(self.data.index, self.data['ewmlong'], 'black', label = 'long-200')
+        # ax[0].plot(self.data.index, self.data['ewmshort'], 'crimson', label = 'short-20')
+        # ax[0].plot(self.data.index, self.data['ewmmedium'], 'green', label = 'medium-100')
+        # ax[0].scatter(self.data.index, self.data['buy'], marker='o', s=120, color = 'g', label = 'buy')
+        # ax[0].scatter(self.data.index, self.data['buy_no_condition'], marker='o', s=60, color = 'black', label = 'buy_no_open_trade')
+        # ax[0].scatter(self.data.index, self.data['sell'], marker='o', s=120, color = 'r', label = 'sell')
         ax[0].fill_between(self.data.index, self.q25_close, self.q75_close, color='black',
                       alpha=0.25)
-        ax[0].plot(self.data.index,self.data['close'],'tab:blue', marker="o",
-               markersize=1, linestyle='', label = 'Close Price')
+        # ax[0].plot(self.data.index,self.data['close'],'tab:blue', marker="o",
+        #        markersize=1, linestyle='', label = 'Close Price')
         ax[0].text(self.data.index[-1], self.data['close'].iloc[-1],current_time, fontsize = 11)
         ax[0].legend()
         ax[0].grid(True)
