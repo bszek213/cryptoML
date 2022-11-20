@@ -11,7 +11,6 @@ from timeit import default_timer
 import plotly.graph_objects as go
 import krakenex
 from pykrakenapi import KrakenAPI
-from technical_analysis import stoch_RSI
 # def kraken_info():
 #     print('initialize kraken data')
 #     api = krakenex.API()
@@ -64,6 +63,27 @@ def set_crypt_names():
     df = read_csv(path.join(location,'crypto_trade_min.csv'))
     df.sort_values(by=['crypto'],inplace=True)
     return df['crypto']
+def RSI(data):
+    data['change'] = data.Close.diff()
+    # crypto_df['U'] = [x if x > 0 else 0 for x in crypto_df.change]
+    # crypto_df['D'] = [abs(x) if x < 0 else 0 for x in crypto_df.change]
+    data['U']  = data['change'].clip(lower=0)
+    data['D'] = -1*data['change'].clip(upper=0)
+    data['U'] = data.U.ewm(span=14,
+               min_periods=13).mean()
+    data['D'] = data.D.ewm(span=14,
+               min_periods=13).mean()
+    data['RS'] = data.U / data.D
+    data['RSI'] = 100 - (100/(1+data.RS))
+    data['RSI'] = data['RSI'].rolling(5).mean()
+    return data
+
+def stoch_RSI(data):
+    min_val  = data['RSI'].rolling(window=14, center=False).min()
+    max_val = data['RSI'].rolling(window=14, center=False).max()
+    data['Stoch_RSI'] = ((data['RSI'] - min_val) / (max_val - min_val)) * 100
+    data['Stoch_RSI'] = data['Stoch_RSI'].rolling(9).mean()
+    return data
 def create_candlestick(crypt,ohlc):
     # data.loc[ohlc.iloc[-1].name] = [ohlc['open'].iloc[-1],
     #                                 ohlc['high'].iloc[-1],
@@ -210,6 +230,7 @@ def piercing_line(crypto_df):
         return False
 def three_white_soldiers(crypto_df):
     try:
+        crypto_df = RSI(crypto_df)
         out, _, _ = stoch_RSI(crypto_df)
         stoch_rsi = out['Stoch_RSI'].iloc[-1]
     except:
