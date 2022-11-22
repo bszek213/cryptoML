@@ -32,7 +32,7 @@ indicators like RSI/
 SAMPLE_RATE = 1440
 DROPOUT = 0.2 #Prevent overfitting
 LOOKBACK = 60
-FORECAST = 30
+FORECAST = 7
 WINDOW_SIZE = FORECAST - 1
 BATCH_SIZE = 32
 class lstmPrediction():
@@ -50,17 +50,20 @@ class lstmPrediction():
         print('yahoo price data: ',self.data)
     def preprocess(self):
         #get features
-        features = ['Close','High']
-        self.input_data = self.data[features]#.values.reshape(-1,1)
+        self.features = ['Close','High']
+        self.input_data = self.data[self.features]#.values.reshape(-1,1)
         # volume_reshape = self.data.Volume.values.reshape(-1,1)
         #min max scale
         self.scaler1 = MinMaxScaler()
-        self.scaler2 = MinMaxScaler()
-        self.scaled_price = self.scaler1.fit_transform(self.input_data[features[0]].to_numpy().reshape(-1, 1))
-        self.scaled_volume = self.scaler2.fit_transform(self.input_data[features[1]].to_numpy().reshape(-1, 1))
-        self.scaled_data = column_stack((self.scaled_price,self.scaled_volume))
-        # self.scaled_data = self.scaled_data[~isnan(self.scaled_data)] 
-        # self.scaled_data = self.scaled_data.reshape(-1,1)
+        # self.scaler2 = MinMaxScaler()
+        self.input_data[self.features[0]] = self.input_data[self.features[0]].pct_change() #normalization
+        self.input_data[self.features[0]] = self.input_data[self.features[0]].bfill()
+        # self.scaled_price = self.input_data[self.features[0]].to_numpy().reshape(-1, 1)
+        self.scaled_price = self.scaler1.fit_transform(self.input_data[self.features[0]].to_numpy().reshape(-1, 1)) #Scale
+        # self.scaled_volume = self.scaler2.fit_transform(self.input_data[features[1]].to_numpy().reshape(-1, 1))
+        # self.scaled_data = column_stack((self.scaled_price,self.scaled_volume))
+        self.scaled_data = self.scaled_price[~isnan(self.scaled_price)] 
+        self.scaled_data = self.scaled_data.reshape(-1,1)
         #standard scale
         # self.scaler = FunctionTransformer(log2,validate=True)
         # self.scaled_data = self.scaler.fit_transform(close_price_reshape)
@@ -102,25 +105,25 @@ class lstmPrediction():
         self.model = Sequential()
         # self.model.add((LSTM(units=30, return_sequences=True, activation='relu', input_shape=(LOOKBACK, self.x_train.shape[-1]))))
         self.model.add((LSTM(units=10, return_sequences=True, activation='relu', input_shape=(self.x_train.shape[1], self.x_train.shape[2]))))
+        self.model.add(Dropout(rate=DROPOUT))
+        # self.model.add((LSTM(units=10,activation='linear',return_sequences=True)))
         # self.model.add(Dropout(rate=DROPOUT))
-        # self.model.add((LSTM(units=10,activation='relu',return_sequences=True)))
+        # self.model.add((LSTM(units=10, activation='relu',return_sequences=True)))
         # self.model.add(Dropout(rate=DROPOUT))
         # self.model.add((LSTM(units=5, activation='relu',return_sequences=True)))
         # self.model.add(Dropout(rate=DROPOUT))
-        # self.model.add((LSTM(units=5, activation='relu',return_sequences=True)))
-        # self.model.add(Dropout(rate=DROPOUT))
-        self.model.add((LSTM(units=5, activation='linear')))
+        self.model.add((LSTM(units=5, activation='relu')))
         self.model.add(Dropout(rate=DROPOUT))
         self.model.add(Dense(FORECAST))
         self.model.add(Activation('linear'))
-        self.model.compile(loss='mean_squared_error',optimizer='adam')
-        es = tf.keras.callbacks.EarlyStopping(monitor='loss',patience=15,restore_best_weights=True)
+        self.model.compile(loss='mse',optimizer='adam',metrics=[tf.keras.metrics.RootMeanSquaredError()])
+        es = tf.keras.callbacks.EarlyStopping(monitor='loss',patience=10,restore_best_weights=True)
         self.model.summary()
         print(f'length of data: {self.x_train.shape}. Make sure the num of parameters is not larger than samples')
         self.history = self.model.fit(
             self.x_train,
             self.y_train,
-            epochs=10,
+            epochs=50,
             batch_size=BATCH_SIZE,
             shuffle=False,
             validation_split=0.1,
@@ -131,6 +134,7 @@ class lstmPrediction():
         X_ = X_.reshape(1, self.x_train.shape[1],self.x_train.shape[2])
         self.Y_ = self.model.predict(X_).reshape(-1, 1)
         self.Y_ = self.scaler1.inverse_transform(self.Y_)
+        print(self.Y_.flatten())
         # self.Y_ = 2**self.Y_
         # self.model.evaluate(self.x_test,self.y_test)
         # self.y_hat = self.model.predict(self.x_test)
@@ -146,24 +150,31 @@ class lstmPrediction():
         plt.show()
     def plot_data(self):
         # organize the results in a data frame
-        df_past = self.data[['Close']].reset_index()
+        df_past = self.input_data
+        # df_past = self.data[['Close']].reset_index()
+        # df_past['Close'] = df_past['Close'].pct_change()
         df_past.rename(columns={'index': 'Date', 'Close': 'Actual'}, inplace=True)
-        df_past['Date'] = to_datetime(df_past['Date'])
+        df_past.drop(columns=[self.features[1]],inplace=True)
+        df_past['Date'] = to_datetime(df_past.index)
         df_past['Forecast'] = nan
         df_past['Forecast'].iloc[-1] = df_past['Actual'].iloc[-1]
         #Future
         df_future = DataFrame(columns=['Date', 'Actual', 'Forecast'])
         df_future['Date'] = date_range(start=df_past['Date'].iloc[-1] + Timedelta(days=1), periods=FORECAST)
-        df_future['Forecast'] = self.Y_.flatten()
+        print(self.Y_.flatten())
+        offset = int(input('10 or 100?'))
+        df_future['Forecast'] = self.Y_.flatten() * offset
         df_future['Actual'] = nan
         results = df_past.append(df_future).set_index('Date')
         csv_save = f"{sys.argv[1]}_future_lstm.csv"
-        results.to_csv(os.path.join(os.getcwd(),'lstm_data',csv_save))
+        # results.drop(index=results.index[-1],axis=0,inplace=True) 
         print(results)
+        results.to_csv(os.path.join(os.getcwd(),'lstm_data',csv_save))
         ax = results.plot()
-        ax.set_ylabel('Close Price ($)')
+        ax.set_ylabel('Close Price pct change ($)')
         ax.set_xlabel('Date')
         plt.show()
+        self.save_forecast = results
         # print(f'length of test: {len(self.y_test_price)}')
         # print(f'length of yhat: {len(self.y_hat_price)}')
         # mape_error = abs(mean((abs(self.y_test_price - self.y_hat_price) / self.y_test_price) * 100))
@@ -175,6 +186,22 @@ class lstmPrediction():
         # plt.ylabel("Price")
         # plt.legend(["Test","Prediction"])
         # plt.show()
+    def convert_pct_change_to_price(self):
+        close_data = self.data.Close
+        fore_pct_change = self.save_forecast['Forecast'].dropna()
+        save_predicted_price = []
+        for i in range(len(fore_pct_change)):
+            if i == 0:
+                temp = close_data.iloc[-1] 
+                print(f'zero start: {temp + (temp * fore_pct_change[i])}, {fore_pct_change[i]}')
+                save_predicted_price.append(temp + (temp * fore_pct_change[i]))
+            else:
+                print(f'zero start: {save_predicted_price[i-1]}')
+                save_predicted_price.append(save_predicted_price[i-1] + (save_predicted_price[i-1] * fore_pct_change[i]))
+        plt.plot(self.data.index,self.data.Close,marker="o")
+        plt.plot(fore_pct_change.index,save_predicted_price,marker="o"  )
+        plt.show()
+                
     def run_analysis(self):
         self.get_ohlc(sys.argv[1])
         self.preprocess()
@@ -182,6 +209,7 @@ class lstmPrediction():
         self.machine()
         self.plot_loss()
         self.plot_data()
+        self.convert_pct_change_to_price()
 def main():
     lstmPrediction().run_analysis()
 if __name__ == "__main__":

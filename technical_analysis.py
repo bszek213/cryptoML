@@ -30,13 +30,14 @@ import logging
 from scipy.stats import pearsonr
 import sys
 from datetime import datetime
+import mplfinance as mpf
 warnings.filterwarnings("ignore")
 """
 TODO: 
 -convert UTC to PST time
 -change the sell condition to be the crossover points of the MACD or zero crossing of the Awe ind
 """
-SAMPLE_RATE = 240 #keep at 1440
+SAMPLE_RATE =  240 #keep at   1440
 logging.basicConfig(filename=join(getcwd(),'errors.log'), level=logging.DEBUG, 
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
 logger=logging.getLogger(__name__)
@@ -204,7 +205,7 @@ class technical():
                    min_periods=13).mean()
         self.data['RS'] = self.data.U / self.data.D
         self.data['RSI'] = 100 - (100/(1+self.data.RS))
-        self.data['RSI'] = self.data['RSI'].rolling(5).mean()
+        self.data['RSI'] = self.data['RSI'].rolling(3).mean()
         #calculate the percentile
         try:
             self.q75, self.q25 = percentile(self.data['RSI'].dropna().values, [75 ,25])
@@ -213,6 +214,27 @@ class technical():
         except:
             print('IndexError: cannot do a non-empty take from an empty axes. default to 0')
             self.q75, self.q25, self.RSI_upper_bound = 0,0,0
+    def vol_RSI(self):
+        self.data['change_vol'] = self.data.volume.diff()
+        # crypto_df['U'] = [x if x > 0 else 0 for x in crypto_df.change]
+        # crypto_df['D'] = [abs(x) if x < 0 else 0 for x in crypto_df.change]
+        self.data['U_vol']  = self.data['change_vol'].clip(lower=0)
+        self.data['D_vol'] = -1*self.data['change_vol'].clip(upper=0)
+        self.data['U_vol'] = self.data.U_vol.ewm(span=14,
+                   min_periods=13).mean()
+        self.data['D'] = self.data.D_vol.ewm(span=14,
+                   min_periods=13).mean()
+        self.data['RS_vol'] = self.data.U_vol / self.data.D_vol
+        self.data['RSI_vol'] = 100 - (100/(1+self.data.RS_vol))
+        self.data['RSI_vol'] = self.data['RSI_vol'].rolling(7).mean()
+        #calculate the percentile
+        try:
+            self.q75_RSI_vol, self.q25_RSI_vol = percentile(self.data['RSI_vol'].dropna().values, [75 ,25])
+            #calculate an upper bound: Q3 + .2 *IQR
+            self.RSI_upper_bound_rsi = self.q75 + (.1*(self.q75-self.q25))
+        except:
+            print('IndexError: cannot do a non-empty take from an empty axes. default to 0')
+            self.q75_RSI_vol, self.q75_RSI_vol, self.RSI_upper_bound_rsi = 0,0,0
     def stoch_RSI(self):
         min_val  = self.data['RSI'].rolling(window=14, center=False).min()
         max_val = self.data['RSI'].rolling(window=14, center=False).max()
@@ -277,8 +299,25 @@ class technical():
         now = datetime.now()
         current_time = now.strftime("%H:%M:%S")
         str_name = f'{name} : % gain/lost: {self.gain_lost} | {round(self.coef_variation,4)} coeff of variation : LinReg coef: {self.reg_coef[0]} | fit error: {self.MAPE}%'
+        # width = 0.3#.15
+        # width2 = 0.1#.01
+        # #define up and down prices
+        # up = self.data[self.data.close>=self.data.open]
+        # down = self.data[self.data.close<self.data.open]
+        # #define colors to use
+        # col1 = 'green'
+        # col2 = 'red'
+        # #plot up prices
+        # ax[0].bar(up.index,up.close-up.open,width,bottom=up.open,color=col1)
+        # ax[0].bar(up.index,up.high-up.close,width2,bottom=up.close,color=col1)
+        # ax[0].bar(up.index,up.low-up.open,width2,bottom=up.open,color=col1)
+        # #plot down prices
+        # ax[0].bar(down.index,down.close-down.open,width,bottom=down.open,color=col2)
+        # ax[0].bar(down.index,down.high-down.open,width2,bottom=down.open,color=col2)
+        # ax[0].bar(down.index,down.low-down.close,width2,bottom=down.close,color=col2)
         ax[0].set_title(str_name)
-        ax[0].plot(self.data.index,self.reg_arr_half,'tab:orange',label = 'linearRegressor')
+        # mpf.plot(self.data,ax=ax[0],type='candle',style="yahoo")
+        # ax[0].plot(self.data.index,self.reg_arr_half,'tab:orange',label = 'linearRegressor')
         ax[0].plot(self.data.index, self.data['ewmlong'], 'black', label = 'long-200')
         ax[0].plot(self.data.index, self.data['ewmshort'], 'crimson', label = 'short-20')
         ax[0].plot(self.data.index, self.data['ewmmedium'], 'green', label = 'medium-100')
@@ -288,8 +327,8 @@ class technical():
         ax[0].fill_between(self.data.index, self.q25_close, self.q75_close, color='black',
                       alpha=0.25)
         ax[0].plot(self.data.index,self.data['close'],'tab:blue', marker="o",
-               markersize=1, linestyle='', label = 'Close Price')
-        ax[0].text(self.data.index[-1], self.data['close'].iloc[-1],current_time, fontsize = 11)
+                markersize=1, linestyle='', label = 'Close Price')
+        # ax[0].text(self.data.index[-1], self.data['close'].iloc[-1],current_time, fontsize = 11)
         ax[0].legend()
         ax[0].grid(True)
         # ax[0].set_xlim(left=x_low_lim)
@@ -329,18 +368,20 @@ class technical():
         ax[2].set_xlabel('Date')
         ax[2].set_ylabel('RSI Values')
         ax[2].grid(True)
-        #ao indicator
-        ax[3].plot(self.data.index, self.data['ao'], 'r', marker="o", markersize=2, 
-                   linestyle='-',linewidth= 0.25, label = 'awesome_indicator')
-        ax[3].scatter(buy_df.index, buy_df['ao'], marker='o', s=120, color = 'g', label = 'buy')
-        ax[3].scatter(sell_df.index, sell_df['ao'], marker='o', s=120, color = 'r', label = 'sell')
-        ax[3].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
-        ax[3].fill_between(self.data.index, self.q75_ao, self.q25_ao, color='green',
-                          alpha=0.2,label='IQR range AO')
+        #Volume RSI
+        ax[3].plot(self.data.index, self.data['RSI_vol'], 'r', marker="o", markersize=2, 
+                   linestyle='-',linewidth= 0.25, label = 'volume RSI')
+        ax[3].scatter(buy_df.index, buy_df['RSI_vol'], marker='o', s=120, color = 'g', label = 'buy')
+        ax[3].scatter(sell_df.index, sell_df['RSI_vol'], marker='o', s=120, color = 'r', label = 'sell')
+        ax[3].hlines(y = self.q25_RSI_vol, xmin=self.data.index[0], xmax=self.data.index[-1])
+        ax[3].hlines(y = self.q75_RSI_vol, xmin=self.data.index[0], xmax=self.data.index[-1]) 
+        # ax[3].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
+        # ax[3].fill_between(self.data.index, self.q75_RSI_vol, self.q25_RSI_vol, color='green',
+        #                   alpha=0.2,label='IQR range RSI volume')
         ax[3].legend()
         # ax[3].set_xlim(x_low_lim)
         ax[3].set_xlabel('Date')
-        ax[3].set_ylabel('Awesome Indicator')
+        ax[3].set_ylabel('Volume RSI')
         ax[3].grid(True)
         #Volume Oscillator
         ax[4].plot(self.data.index, self.data['volume_os'], 'r', marker="o", markersize=2, 
@@ -349,29 +390,39 @@ class technical():
         ax[4].scatter(sell_df.index, sell_df['volume_os'], marker='o', s=120, color = 'r', label = 'sell')
         ax[4].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
         ax[4].fill_between(self.data.index, self.q75_vol_os, self.q25_vol_os, color='green',
-                          alpha=0.2,label='IQR range Vol Os')
+                          alpha=0.2,label='IQR range Vol OS')
         ax[4].legend()
         # ax[3].set_xlim(x_low_lim)
         ax[4].set_xlabel('Date')
         ax[4].set_ylabel('Volume Oscillator')
         ax[4].grid(True)
-        #PLOT MACD
-        ax[5].plot(self.data.index, self.data['macd_diff'], 'tab:blue', marker="o",
-                        markersize=1, linestyle='-', label = 'MACD diff')
-        ax[5].plot(self.data.index, self.data['signal_line'], 'tab:red', marker="o",
-                        markersize=1, linestyle='-', label = 'Signal line')
-        ax[5].fill_between(self.data.index, self.q75_macd, self.q25_macd, color='green',
-                          alpha=0.2,label='IQR range MACD')
-        ax[5].scatter(buy_df.index, buy_df['macd_diff'], marker='o', s=120, color = 'g', label = 'buy')
-        ax[5].scatter(sell_df.index, sell_df['signal_line'], marker='o', s=120, color = 'r', label = 'sell')
+        #PLOT MACD OR AWESCOME INDICATOR
+        ax[5].plot(self.data.index, self.data['ao'],'tab:blue', marker="o",
+                        markersize=1, linestyle='-', label = 'AO indicator')
         ax[5].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
+        ax[5].fill_between(self.data.index, self.q75_ao, self.q25_ao, color='green',
+                          alpha=0.2,label='IQR range AO indicator')
+        ax[5].scatter(buy_df.index, buy_df['ao'], marker='o', s=120, color = 'g', label = 'buy')
         ax[5].legend()
         ax[5].grid(True)
+        # ax[5].plot(self.data.index, self.data['macd_diff'], 'tab:blue', marker="o",
+        #                 markersize=1, linestyle='-', label = 'MACD diff')
+        # ax[5].plot(self.data.index, self.data['signal_line'], 'tab:red', marker="o",
+        #                 markersize=1, linestyle='-', label = 'Signal line')
+        # ax[5].fill_between(self.data.index, self.q75_macd, self.q25_macd, color='green',
+        #                   alpha=0.2,label='IQR range MACD')
+        # ax[5].scatter(buy_df.index, buy_df['macd_diff'], marker='o', s=120, color = 'g', label = 'buy')
+        # ax[5].scatter(sell_df.index, sell_df['signal_line'], marker='o', s=120, color = 'r', label = 'sell')
+        # ax[5].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
+        # ax[5].legend()
+        # ax[5].grid(True)
         save_name = name + '.png'
         direct = getcwd()
         final_dir = join(direct, 'technical_analysis', save_name)
+        # custom_xlim = (self.data.index[int(len(self.data.index)/1.25)], self.data.index[-1])
+        # plt.setp(ax, xlim=custom_xlim)
         plt.tight_layout()
-        plt.savefig(final_dir,dpi=350)
+        plt.savefig(final_dir,dpi=450)
         plt.close()
     def trade(self):
         self.data['buy'] = empty(len(self.data))
@@ -409,11 +460,17 @@ class technical():
                 # (self.data['ao'].iloc[o-1] < self.data['ao'].iloc[o]) and
                 # (self.data['ao'].iloc[o] < self.q25_ao)
                 #######################
-                (self.data['macd_diff'].iloc[o-1] < self.data['signal_line'].iloc[o-1]) and
-                (self.data['macd_diff'].iloc[o] > self.data['signal_line'].iloc[o]) and
-                (self.data['volume_os'].iloc[o] <= self.q25_vol_os) and
-                (self.data['RSI'].iloc[o] <= self.q25) and
-                (self.data['macd_diff'].iloc[o] <= self.q25_macd) 
+                # (self.data['macd_diff'].iloc[o-1] < self.data['signal_line'].iloc[o-1]) and
+                # (self.data['macd_diff'].iloc[o] > self.data['signal_line'].iloc[o]) and
+                # (self.data['volume_os'].iloc[o] <= self.q25_vol_os) and
+                # (self.data['RSI'].iloc[o] <= self.q25) and
+                # (self.data['macd_diff'].iloc[o] <= self.q25_macd) 
+                #######################
+                (self.data['volume_os'].iloc[o-1] <= self.q25_vol_os) and
+                (self.data['volume_os'].iloc[o] >= self.q75_vol_os) and 
+                (self.data['RSI'].iloc[o] <= self.q25) and 
+                (self.data['RSI_vol'].iloc[o] >= self.q75_RSI_vol) and 
+                (self.data['ao'].iloc[o] >= self.data['ao'].iloc[o-1])
                 ):
                     self.buy_for_trading = o
                     self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
@@ -478,6 +535,7 @@ class technical():
                         self.get_ohlc(name)
                         self.macd()
                         self.RSI()
+                        self.vol_RSI()
                         self.OBV()
                         self.volume_osc()
                         # self.stoch_RSI()
@@ -530,6 +588,7 @@ class technical():
             self.get_ohlc(sys.argv[1])
             self.macd()
             self.RSI()
+            self.vol_RSI()
             self.OBV()
             self.volume_osc()
             # self.bollinger_band()
@@ -555,6 +614,7 @@ class technical():
                     self.get_ohlc(name)
                     self.macd()
                     self.RSI()
+                    self.vol_RSI()
                     self.OBV()
                     self.volume_osc()
                     # self.bollinger_band()
@@ -568,7 +628,7 @@ class technical():
                     self.trade()
                     # if self.coef_variation != 'nan':
                     check_latest_trade = len(self.data) - self.buy_for_trading
-                    if (check_latest_trade < 700): #int(len(self.data)/1.5)
+                    if (check_latest_trade < 200): #int(len(self.data)/1.5)
                         self.plot(name)
                     self.live_trading(name)
                     if check_latest_trade < closet_buy:
