@@ -286,7 +286,7 @@ class technical():
     #     len_values = min([len_RSI,len_macd,len_ao])
     #     self.corr_RSI_MACD = pearsonr(self.data['RSI'].dropna().iloc[0:len_values].values,self.data['macd_diff'].dropna().iloc[0:len_values].values)
     #     self.corr_ao_MACD = pearsonr(self.data['ao'].dropna().iloc[0:len_values].values,self.data['macd_diff'].dropna().iloc[0:len_values].values)
-    def plot(self,name):
+    def plot(self,name,closet_buy):
         #create new date time
         time_increment = str(SAMPLE_RATE) + "min"
         self.data.index = date_range(end=datetime.now(),periods=len(self.data.index),freq=time_increment)
@@ -416,7 +416,7 @@ class technical():
         # ax[5].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
         # ax[5].legend()
         # ax[5].grid(True)
-        save_name = name + '.png'
+        save_name = name + '_' + str(closet_buy) +'.png'
         direct = getcwd()
         final_dir = join(direct, 'technical_analysis', save_name)
         # custom_xlim = (self.data.index[int(len(self.data.index)/1.25)], self.data.index[-1])
@@ -515,7 +515,7 @@ class technical():
     def live_trading(self,name):
         trade_now = len(self.data) - self.buy_for_trading
         print(' ') #tqdm things
-        print(f'{name} closet trade was {trade_now} iterations ago')
+        print(f'{name} closet trade was {trade_now} iterations or {trade_now*SAMPLE_RATE} minutes or {(trade_now*SAMPLE_RATE)/60} hours ago')
         if trade_now < 1:
             try:
                 print(f'buy {name}')
@@ -628,14 +628,15 @@ class technical():
                     self.trade()
                     # if self.coef_variation != 'nan':
                     check_latest_trade = len(self.data) - self.buy_for_trading
-                    if (check_latest_trade < 200): #int(len(self.data)/1.5)
-                        self.plot(name)
-                    self.live_trading(name)
                     if check_latest_trade < closet_buy:
                         closet_buy = check_latest_trade
                         closet_name = name
+                    if (check_latest_trade < 200): #int(len(self.data)/1.5)
+                        self.plot(name, closet_buy)
+                    self.live_trading(name)
+                    
                     print(f'cumulative gain {round(self.cumlative_gained,4)}% after running {name}')
-                    print(f'{closet_name} has the closest trade at {closet_buy} iterations')
+                    print(f'{closet_name} has the closest trade at {closet_buy} iterations or {closet_buy*SAMPLE_RATE} minutes or {(closet_buy*SAMPLE_RATE)/60} hours ago')
                     save_hold_time_temp.append(self.save_time_hold)
                     save_hist.append(self.coef_variation)
                     sleep(1)
