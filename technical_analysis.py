@@ -43,7 +43,7 @@ logging.basicConfig(filename=join(getcwd(),'errors.log'), level=logging.DEBUG,
 logger=logging.getLogger(__name__)
 class technical():
     def __init__(self):
-        print('initialize kraken data')
+        print(f'initialize kraken data with sample rate of {SAMPLE_RATE} minutes')
         api = krakenex.API()
         api.load_key('key.txt')
         self.kraken = KrakenAPI(api)
@@ -307,6 +307,7 @@ class technical():
             self.data['MFI'].iloc[diff_length] = inst
             diff_length += 1
         self.q75_mfi, self.q25_mfi = percentile(self.data['MFI'].dropna().values, [75 ,25])
+        self.data['MFI'] = self.data['MFI'].rolling(4).mean()
     def volatility(self):
         self.data['log_return'] = log(self.data['close']/self.data['close'].shift())
         self.volatility_value = self.data['log_return'].std()*len(self.data)**0.5 #365 days of trading square root
@@ -433,11 +434,9 @@ class technical():
                    linestyle='-',linewidth= 0.25, label = 'Money Flow Index')
         ax[5].scatter(buy_df.index, buy_df['MFI'], marker='o', s=120, color = 'g', label = 'buy')
         ax[5].scatter(sell_df.index, sell_df['MFI'], marker='o', s=120, color = 'r', label = 'sell')
-        ax[5].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
         ax[5].fill_between(self.data.index, self.q75_mfi, self.q25_mfi, color='green',
                           alpha=0.2,label='IQR range MFI')
         ax[5].legend()
-        # ax[3].set_xlim(x_low_lim)
         ax[5].set_xlabel('Date')
         ax[5].set_ylabel('Money Flow Index')
         ax[5].grid(True)
@@ -511,12 +510,27 @@ class technical():
                 # (self.data['RSI'].iloc[o] <= self.q25) and
                 # (self.data['macd_diff'].iloc[o] <= self.q25_macd) 
                 #######################
-                (self.data['volume_os'].iloc[o-1] <= self.q25_vol_os) and
-                (self.data['volume_os'].iloc[o] >= self.q75_vol_os) and 
-                (self.data['RSI'].iloc[o] <= self.q25) and 
-                (self.data['RSI_vol'].iloc[o] >= self.q75_RSI_vol) and 
-                (self.data['ao'].iloc[o] >= self.data['ao'].iloc[o-1])
+                #TRADE SCHEME WORKS, HIGHLY INFREQUENT
+                # (self.data['volume_os'].iloc[o-1] <= self.q25_vol_os) and
+                # (self.data['volume_os'].iloc[o] >= self.q75_vol_os) and 
+                # (self.data['RSI'].iloc[o] <= self.q25) and 
+                # (self.data['RSI_vol'].iloc[o] >= self.q75_RSI_vol) and 
+                # (self.data['ao'].iloc[o] >= self.data['ao'].iloc[o-1])
+                #######################
+                (self.data['volume_os'].iloc[o] > self.q75_vol_os) and
+                (self.data['MFI'].iloc[o] < self.q25_mfi) and 
+                (self.data['RSI'].iloc[o] < self.q25) and 
+                (self.data['RSI_vol'].iloc[o] > self.q75_RSI_vol)
                 ):
+                    exit_while = True
+                    while exit_while:
+                        if o >= len(self.data['MFI']):
+                            exit_while = False
+                        if ((self.data['MFI'].iloc[o-1] < self.data['MFI'].iloc[o]) and
+                              (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o])):
+                            exit_while = False
+                        else:
+                            o += 1
                     self.buy_for_trading = o
                     self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
                     if open_trade == True:
@@ -529,11 +543,18 @@ class technical():
             if (open_trade == False):
                 count_hold_iter +=1
             #TODO change the sell condition to zero crossing of the Awe ind
+            if ((self.data['close'].iloc[o] > thresh_buy) or 
+                (self.data['close'].iloc[o] < thresh_sell)):
+                sell = 'sell'
+            else:
+                sell ='dont'
+                
             if (
                 (open_trade == False) and
-                (self.data['macd_diff'].iloc[o-1] > self.data['signal_line'].iloc[o-1]) and
-                (self.data['macd_diff'].iloc[o] < self.data['signal_line'].iloc[o]) and
-                (self.data['macd_diff'].iloc[o] >=0) #self.q75_macd
+                (sell == 'sell')
+                # (self.data['macd_diff'].iloc[o-1] > self.data['signal_line'].iloc[o-1]) and
+                # (self.data['macd_diff'].iloc[o] < self.data['signal_line'].iloc[o]) and
+                # (self.data['macd_diff'].iloc[o] >=0) #self.q75_macd
                 #I like this
                 # (open_trade == False) and
                 # (self.data['RSI'].iloc[o] > self.q75)
@@ -543,7 +564,7 @@ class technical():
                 # (self.data['RSI'].iloc[o-1] ==  self.data['RSI'].iloc[o])
                 # 
                 ):
-                    # self.data['sell'].iloc[o] = self.data['close'].iloc[o]
+                    self.data['sell'].iloc[o] = self.data['close'].iloc[o]
                     simulate_fees_buy = buy_price * 0.0026
                     simulate_fees_sell = self.data['close'].iloc[o] * 0.0026
                     buy_plus_fees = buy_price + simulate_fees_buy +  simulate_fees_sell
