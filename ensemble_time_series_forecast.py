@@ -58,10 +58,13 @@ class ensembleTS():
          [8, 0, 0],[8, 0, 1],[8, 0, 2],[8, 0, 3],[8, 1, 0],[8, 1, 1],
          [8, 1, 2],[8, 1, 3],[8, 2, 0],[8, 2, 1],[8, 2, 2],[8, 2, 3],
          [8, 3, 0],[8, 3, 1],[8, 3, 2],[8, 3, 3]]
-        mape_best = float("inf")
+        mape_best,mape = float("inf"),float("inf")
         filterwarnings("ignore")
         for inst in tqdm(param_arima):
-            mape = self.error_arima(inst)
+            try:
+                mape = self.error_arima(inst)
+            except:
+                continue
             if mape < mape_best:
                 mape_best = mape
                 arima_save = inst

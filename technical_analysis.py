@@ -10,7 +10,7 @@ limit to 5-10 trades a day
 from sklearn.linear_model import LinearRegression
 import krakenex
 from pykrakenapi import KrakenAPI
-from numpy import array, zeros, nan, arange, percentile, empty, log, mean, isnan,logical_not
+from numpy import array, zeros, nan, arange, percentile, empty, log, mean, isnan, logical_not, full
 from time import sleep
 # import argparse
 from os import getcwd, remove
@@ -275,6 +275,38 @@ class technical():
         # an_array[:] = nan
         # an_array[len(crypto_df['volume_os']) - len(sav_data):len(crypto_df['volume_os'])] = sav_data
         # crypto_df['volume_os'] = an_array
+    def money_flow_index(self):
+        period = 14
+        typical_price = (self.data['close'] + self.data['high'] + self.data['low']) / 3
+        money_flow = typical_price * self.data['volume']
+        positive_flow = []
+        negative_flow = []
+        for i in range(1, len(typical_price)):
+            if typical_price[i] > typical_price[i-1]:
+                positive_flow.append(money_flow[i-1])
+                negative_flow.append(0)
+                
+            elif typical_price[i] < typical_price[i-1]:
+                negative_flow.append(money_flow[i-1])
+                positive_flow.append(0)
+                
+            else:
+                positive_flow.append(0)
+                negative_flow.append(0)
+        positive_mf = []
+        negative_mf = []
+        for i in range(period-1, len(positive_flow)):
+            positive_mf.append( sum(positive_flow[i + 1- period : i+1]))
+            
+        for i in range(period-1, len(negative_flow)):
+            negative_mf.append( sum(negative_flow[i + 1- period : i+1]))
+        self.data['MFI'] = full([len(typical_price), 1], nan)
+        temp = 100 * (array(positive_mf) / (array(positive_mf) + array(negative_mf) ))
+        diff_length = len(self.data['MFI']) - len(temp)
+        for inst in temp:
+            self.data['MFI'].iloc[diff_length] = inst
+            diff_length += 1
+        self.q75_mfi, self.q25_mfi = percentile(self.data['MFI'].dropna().values, [75 ,25])
     def volatility(self):
         self.data['log_return'] = log(self.data['close']/self.data['close'].shift())
         self.volatility_value = self.data['log_return'].std()*len(self.data)**0.5 #365 days of trading square root
@@ -396,15 +428,28 @@ class technical():
         ax[4].set_xlabel('Date')
         ax[4].set_ylabel('Volume Oscillator')
         ax[4].grid(True)
-        #PLOT MACD OR AWESCOME INDICATOR
-        ax[5].plot(self.data.index, self.data['ao'],'tab:blue', marker="o",
-                        markersize=1, linestyle='-', label = 'AO indicator')
+        # MONEY FLOW INDEX
+        ax[5].plot(self.data.index, self.data["MFI"], 'r', marker="o", markersize=2, 
+                   linestyle='-',linewidth= 0.25, label = 'Money Flow Index')
+        ax[5].scatter(buy_df.index, buy_df['MFI'], marker='o', s=120, color = 'g', label = 'buy')
+        ax[5].scatter(sell_df.index, sell_df['MFI'], marker='o', s=120, color = 'r', label = 'sell')
         ax[5].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
-        ax[5].fill_between(self.data.index, self.q75_ao, self.q25_ao, color='green',
-                          alpha=0.2,label='IQR range AO indicator')
-        ax[5].scatter(buy_df.index, buy_df['ao'], marker='o', s=120, color = 'g', label = 'buy')
+        ax[5].fill_between(self.data.index, self.q75_mfi, self.q25_mfi, color='green',
+                          alpha=0.2,label='IQR range MFI')
         ax[5].legend()
+        # ax[3].set_xlim(x_low_lim)
+        ax[5].set_xlabel('Date')
+        ax[5].set_ylabel('Money Flow Index')
         ax[5].grid(True)
+        # #PLOT MACD OR AWESCOME INDICATOR
+        # ax[5].plot(self.data.index, self.data['ao'],'tab:blue', marker="o",
+        #                 markersize=1, linestyle='-', label = 'AO indicator')
+        # ax[5].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
+        # ax[5].fill_between(self.data.index, self.q75_ao, self.q25_ao, color='green',
+        #                   alpha=0.2,label='IQR range AO indicator')
+        # ax[5].scatter(buy_df.index, buy_df['ao'], marker='o', s=120, color = 'g', label = 'buy')
+        # ax[5].legend()
+        # ax[5].grid(True)
         # ax[5].plot(self.data.index, self.data['macd_diff'], 'tab:blue', marker="o",
         #                 markersize=1, linestyle='-', label = 'MACD diff')
         # ax[5].plot(self.data.index, self.data['signal_line'], 'tab:red', marker="o",
@@ -498,7 +543,7 @@ class technical():
                 # (self.data['RSI'].iloc[o-1] ==  self.data['RSI'].iloc[o])
                 # 
                 ):
-                    self.data['sell'].iloc[o] = self.data['close'].iloc[o]
+                    # self.data['sell'].iloc[o] = self.data['close'].iloc[o]
                     simulate_fees_buy = buy_price * 0.0026
                     simulate_fees_sell = self.data['close'].iloc[o] * 0.0026
                     buy_plus_fees = buy_price + simulate_fees_buy +  simulate_fees_sell
@@ -540,7 +585,8 @@ class technical():
                         self.volume_osc()
                         # self.stoch_RSI()
                         # self.bollinger_band()
-                        self.aroon_ind()
+                        # self.aroon_ind()
+                        self.money_flow_index()
                         self.moving_averages()
                         self.awesome_indicator()
                         self.half_LR()
@@ -591,6 +637,7 @@ class technical():
             self.vol_RSI()
             self.OBV()
             self.volume_osc()
+            self.money_flow_index()
             # self.bollinger_band()
             # self.stoch_RSI()
             self.aroon_ind()
@@ -600,7 +647,7 @@ class technical():
             self.volatility()
             # self.correlational_analysis()
             self.trade()
-            self.plot(sys.argv[1])
+            self.plot(sys.argv[1],closet_buy)
         else:
             while True:
                 pos_crypt = self.get_24_above_zero()
@@ -619,7 +666,8 @@ class technical():
                     self.volume_osc()
                     # self.bollinger_band()
                     # self.stoch_RSI()
-                    self.aroon_ind()
+                    # self.aroon_ind()
+                    self.money_flow_index()
                     self.moving_averages()
                     self.awesome_indicator()
                     self.half_LR()
