@@ -527,12 +527,12 @@ class technical():
                         if o >= len(self.data['MFI']):
                             exit_while = False
                         if ((self.data['MFI'].iloc[o-1] < self.data['MFI'].iloc[o]) and
-                              (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o])):
+                            (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o])):
+                            self.buy_for_trading = o
+                            self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
                             exit_while = False
                         else:
                             o += 1
-                    self.buy_for_trading = o
-                    self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
                     if open_trade == True:
                         self.data['buy'].iloc[o] = self.data['close'].iloc[o]
                         buy_price = self.data['close'].iloc[o]
@@ -669,7 +669,8 @@ class technical():
             self.volatility()
             # self.correlational_analysis()
             self.trade()
-            self.plot(sys.argv[1],closet_buy)
+            check_latest_trade = len(self.data) - self.buy_for_trading
+            self.plot(sys.argv[1],check_latest_trade)
         else:
             while True:
                 pos_crypt = self.get_24_above_zero()
@@ -701,8 +702,8 @@ class technical():
                     if check_latest_trade < closet_buy:
                         closet_buy = check_latest_trade
                         closet_name = name
-                    if (check_latest_trade < 200): #int(len(self.data)/1.5)
-                        self.plot(name, closet_buy)
+                    if (check_latest_trade < 100): #int(len(self.data)/1.5)
+                        self.plot(name, check_latest_trade)
                     self.live_trading(name)
                     
                     print(f'cumulative gain {round(self.cumlative_gained,4)}% after running {name}')
