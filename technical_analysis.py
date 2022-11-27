@@ -158,6 +158,8 @@ class technical():
         a_list = list(arange(len(self.data)-data_len,len(self.data)))
         X1 = array(a_list)
         X = X1.reshape(-1, 1)
+        print(X)
+        print(self.data['OBV'].iloc[-data_len-1:-1].values)
         reg = LinearRegression().fit(X, self.data['OBV'].iloc[-data_len-1:-1].values)
     
         #create an array  of linear regression - short 
