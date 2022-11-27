@@ -58,8 +58,8 @@ class lstmPrediction():
         # self.scaler2 = MinMaxScaler()
         self.input_data[self.features[0]] = self.input_data[self.features[0]].pct_change() #normalization
         self.input_data[self.features[0]] = self.input_data[self.features[0]].bfill()
-        # self.scaled_price = self.input_data[self.features[0]].to_numpy().reshape(-1, 1)
-        self.scaled_price = self.scaler1.fit_transform(self.input_data[self.features[0]].to_numpy().reshape(-1, 1)) #Scale
+        self.scaled_price = self.input_data[self.features[0]].to_numpy().reshape(-1, 1) #No scaling
+        # self.scaled_price = self.scaler1.fit_transform(self.input_data[self.features[0]].to_numpy().reshape(-1, 1)) #Scale
         # self.scaled_volume = self.scaler2.fit_transform(self.input_data[features[1]].to_numpy().reshape(-1, 1))
         # self.scaled_data = column_stack((self.scaled_price,self.scaled_volume))
         self.scaled_data = self.scaled_price[~isnan(self.scaled_price)] 
@@ -103,19 +103,20 @@ class lstmPrediction():
         # self.sequence_data = array(d)
     def machine(self):
         self.model = Sequential()
+        #LSTM
         # self.model.add((LSTM(units=30, return_sequences=True, activation='relu', input_shape=(LOOKBACK, self.x_train.shape[-1]))))
-        self.model.add((LSTM(units=10, return_sequences=True, activation='relu', input_shape=(self.x_train.shape[1], self.x_train.shape[2]))))
+        self.model.add(LSTM(units=10, return_sequences=True, activation='relu', input_shape=(self.x_train.shape[1], self.x_train.shape[2])))
         self.model.add(Dropout(rate=DROPOUT))
-        # self.model.add((LSTM(units=10,activation='linear',return_sequences=True)))
+        self.model.add((LSTM(units=10,activation='softmax',return_sequences=True)))
         # self.model.add(Dropout(rate=DROPOUT))
         # self.model.add((LSTM(units=10, activation='relu',return_sequences=True)))
         # self.model.add(Dropout(rate=DROPOUT))
         # self.model.add((LSTM(units=5, activation='relu',return_sequences=True)))
         # self.model.add(Dropout(rate=DROPOUT))
-        self.model.add((LSTM(units=5, activation='relu')))
+        # self.model.add((LSTM(units=5, activation='relu')))
         self.model.add(Dropout(rate=DROPOUT))
         self.model.add(Dense(FORECAST))
-        self.model.add(Activation('linear'))
+        # self.model.add(Activation('softmax'))
         self.model.compile(loss='mse',optimizer='adam',metrics=[tf.keras.metrics.RootMeanSquaredError()])
         es = tf.keras.callbacks.EarlyStopping(monitor='loss',patience=10,restore_best_weights=True)
         self.model.summary()
@@ -133,8 +134,8 @@ class lstmPrediction():
         # X_ = X_.reshape(1, LOOKBACK, 1)
         X_ = X_.reshape(1, self.x_train.shape[1],self.x_train.shape[2])
         self.Y_ = self.model.predict(X_).reshape(-1, 1)
-        self.Y_ = self.scaler1.inverse_transform(self.Y_)
-        print(self.Y_.flatten())
+        # self.Y_ = self.scaler1.inverse_transform(self.Y_) #inverse transform back if MinMaxScaler is used
+        # print(self.Y_.flatten())
         # self.Y_ = 2**self.Y_
         # self.model.evaluate(self.x_test,self.y_test)
         # self.y_hat = self.model.predict(self.x_test)
