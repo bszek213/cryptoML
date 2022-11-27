@@ -360,7 +360,7 @@ class technical():
         ax[0].fill_between(self.data.index, self.q25_close, self.q75_close, color='black',
                       alpha=0.25)
         ax[0].plot(self.data.index,self.data['close'],'tab:blue', marker="o",
-                markersize=1, linestyle='', label = 'Close Price')
+                markersize=1, linestyle='-', linewidth=.5, label = 'Close Price')
         # ax[0].text(self.data.index[-1], self.data['close'].iloc[-1],current_time, fontsize = 11)
         ax[0].legend()
         ax[0].grid(True)
@@ -543,14 +543,15 @@ class technical():
             if (open_trade == False):
                 count_hold_iter +=1
             #TODO change the sell condition to zero crossing of the Awe ind
-            if ((self.data['close'].iloc[o] > thresh_buy) or 
-                (self.data['close'].iloc[o] < thresh_sell)):
-                sell = 'sell'
+            if (open_trade == False):
+                if ((self.data['close'].iloc[o] > thresh_buy) or 
+                    (self.data['close'].iloc[o] < thresh_sell)):
+                    sell = 'sell'
+                else:
+                    sell ='dont'
             else:
                 sell ='dont'
-                
-            if (
-                (open_trade == False) and
+            if ((open_trade == False) and
                 (sell == 'sell')
                 # (self.data['macd_diff'].iloc[o-1] > self.data['signal_line'].iloc[o-1]) and
                 # (self.data['macd_diff'].iloc[o] < self.data['signal_line'].iloc[o]) and
@@ -564,7 +565,7 @@ class technical():
                 # (self.data['RSI'].iloc[o-1] ==  self.data['RSI'].iloc[o])
                 # 
                 ):
-                    self.data['sell'].iloc[o] = self.data['close'].iloc[o]
+                    # self.data['sell'].iloc[o] = self.data['close'].iloc[o]
                     simulate_fees_buy = buy_price * 0.0026
                     simulate_fees_sell = self.data['close'].iloc[o] * 0.0026
                     buy_plus_fees = buy_price + simulate_fees_buy +  simulate_fees_sell
