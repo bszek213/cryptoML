@@ -49,7 +49,7 @@ class technical():
         self.kraken = KrakenAPI(api)
         self.total_trades = 0
         self.cumlative_gained = float(0.0)
-        self.obv_price_reg_sample = 730
+        self.obv_price_reg_sample = 150 #iterations
     def readin_cryptos(self):
         direct = getcwd()
         location = join(direct, 'crypto_trade_min_kraken.csv')
@@ -158,22 +158,26 @@ class technical():
         a_list = list(arange(len(self.data)-data_len,len(self.data)))
         X1 = array(a_list)
         X = X1.reshape(-1, 1)
-        print(X)
-        print(self.data['OBV'].iloc[-data_len-1:-1].values)
-        reg = LinearRegression().fit(X, self.data['OBV'].iloc[-data_len-1:-1].values)
-    
-        #create an array  of linear regression - short 
-        X1_half = arange(len(self.data)-data_len,len(self.data))
-        reg_arr_half = zeros(len(self.data))
-        for i in X1_half:
-            reg_arr_half[i] = (reg.coef_ * i) + reg.intercept_
-        self.reg_obv = [nan if x == 0 else x for x in reg_arr_half]
-        self.obv_reg = reg
-        # rval_reg =  reg_arr_half[reg_arr_half != 0]
-        # rval, pval = pearsonr(rval_reg, self.data['close'].iloc[-data_len-1:-1].values)
+
+        try:
+            reg = LinearRegression().fit(X, self.data['OBV'].iloc[-data_len-1:-1].values)
         
-        #calc OBV bounds 
-        self.q75_OBV, self.q25_OBV = percentile(self.data['OBV'].dropna().values, [75 ,25])
+            #create an array  of linear regression - short 
+            X1_half = arange(len(self.data)-data_len,len(self.data))
+            reg_arr_half = zeros(len(self.data))
+            for i in X1_half:
+                reg_arr_half[i] = (reg.coef_ * i) + reg.intercept_
+            self.reg_obv = [nan if x == 0 else x for x in reg_arr_half]
+            self.obv_reg = reg
+            # rval_reg =  reg_arr_half[reg_arr_half != 0]
+            # rval, pval = pearsonr(rval_reg, self.data['close'].iloc[-data_len-1:-1].values)
+            
+            #calc OBV bounds 
+            self.q75_OBV, self.q25_OBV = percentile(self.data['OBV'].dropna().values, [75 ,25])
+        except:
+            print('Could not calculate OBV linear regression')
+            self.reg_obv = full([1, len(X)], nan)
+            self.obv_reg = nan
 
     def awesome_indicator(self):
         self.data['median_price'] = (self.data['high'] + self.data['low']) / 2
@@ -372,8 +376,9 @@ class technical():
         #plot OBS
         ax[1].plot(self.data.index, self.data['OBV'], 'tab:blue', marker="o",
                         markersize=1, linestyle='-', label = 'OBV diff')
-        ax[1].plot(self.data.index, self.reg_obv, 'tab:red', marker="o",
-                        markersize=1, linestyle='-', label = 'obv_regression line')
+        if self.obv_reg != nan:
+            ax[1].plot(self.data.index, self.reg_obv, 'tab:red', marker="o",
+                            markersize=1, linestyle='-', label = 'obv_regression line')
         ax[1].fill_between(self.data.index, self.q75_OBV, self.q25_OBV, color='green',
                           alpha=0.2,label='IQR range OBV')
         ax[1].scatter(buy_df.index, buy_df['OBV'], marker='o', s=120, color = 'g', label = 'buy')
@@ -384,7 +389,10 @@ class technical():
         ax[1].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
         ax[1].legend()
         ax[1].grid(True)
-        title_obs = f'reg last {self.obv_price_reg_sample} hours OBV: {self.obv_reg.coef_[0]}'
+        if self.obv_reg == nan:
+            title_obs = 'could not calculate regression'
+        else:
+            title_obs = f'reg last {self.obv_price_reg_sample} hours OBV: {self.obv_reg.coef_[0]}'
         ax[1].set_title(title_obs)
         # ax[1].set_xlim(x_low_lim)
         ax[1].set_xlabel('Date')
@@ -519,22 +527,30 @@ class technical():
                 # (self.data['RSI_vol'].iloc[o] >= self.q75_RSI_vol) and 
                 # (self.data['ao'].iloc[o] >= self.data['ao'].iloc[o-1])
                 #######################
-                (self.data['volume_os'].iloc[o] > self.q75_vol_os) and
-                (self.data['MFI'].iloc[o] < self.q25_mfi) and 
-                (self.data['RSI'].iloc[o] < self.q25) and 
-                (self.data['RSI_vol'].iloc[o] > self.q75_RSI_vol)
+                #FAVORITE STRATEGY THUS FAR
+                # (self.data['volume_os'].iloc[o] > self.q75_vol_os) and
+                # (self.data['MFI'].iloc[o] < self.q25_mfi) and 
+                # (self.data['RSI'].iloc[o] < self.q25) and 
+                # (self.data['RSI_vol'].iloc[o] > self.q75_RSI_vol)
+                #######################
+                (self.data['RSI'].iloc[o] < self.q25) and
+                (self.data['volume_os'].iloc[o] > 0) and
+                (self.data['MFI'].iloc[o] < self.q25_mfi)
                 ):
                     exit_while = True
                     while exit_while:
-                        if o >= len(self.data['MFI']):
-                            exit_while = False
-                        if ((self.data['MFI'].iloc[o-1] < self.data['MFI'].iloc[o]) and
-                            (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o])):
+                        if (
+                            (self.data['MFI'].iloc[o-1] < self.data['MFI'].iloc[o]) and
+                            (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o])
+                            ):
                             self.buy_for_trading = o
                             self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
                             exit_while = False
                         else:
                             o += 1
+                        if o >= len(self.data['MFI']):
+                            o = len(self.data['MFI'])-1
+                            exit_while = False
                     if open_trade == True:
                         self.data['buy'].iloc[o] = self.data['close'].iloc[o]
                         buy_price = self.data['close'].iloc[o]
