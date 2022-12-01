@@ -27,6 +27,7 @@ from urllib3 import PoolManager
 from time import sleep
 import krakenex
 from pykrakenapi import KrakenAPI
+from time import sleep
 """
 TODO
 1. ensemble modeling - add arima and other forecasters as a well of getting 
@@ -83,8 +84,13 @@ def set_data(crypt):
 
 def convert_to_panda(inst_data):
     #TODO: make a simple return (Done) and a log return
-    temp = log(inst_data['Close']/inst_data['Close'].shift(1))
-    inst_data['log_return_sum'] = temp.cumsum()
+    #log return
+    # temp = log(inst_data['Close']/inst_data['Close'].shift(1))
+    # inst_data['log_return_sum'] = temp.cumsum()
+    #Percent change
+    # temp = inst_data['Close'].pct_change()
+    inst_data['log_return_sum'] = inst_data['Close'].pct_change()
+    # inst_data['log_return_sum'] = temp.cumsum()
     # inst_data['simple_return_values'] = inst_data['Close'].pct_change().cumsum()#(inst_data['Close'].shift()-inst_data['Close']) / inst_data['Close'] #Simple return 
     inst_data.dropna(inplace=True)
     # df = DataFrame(list(zip(inst_data.Close,inst_data.index,inst_data.Volume,inst_data.Open,inst_data.Low,inst_data.High)),columns = ['y', 'ds','Volume','Open','Low','High'])
@@ -178,7 +184,7 @@ def macd(crypto_df_final,crypt):
     # q75, q25 = percentile(crypto_df_final['macd_diff'].dropna().values, [75 ,25])
     return kraken_data, q25, q75
 
-def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality_prior_scale, seasonality_mode, holiday):#holidays_prior_scale=10
+def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality_prior_scale, seasonality_mode, holiday, data):#holidays_prior_scale=10
     mod = Prophet(interval_width=0.95, daily_seasonality=True, 
                   changepoint_prior_scale=changepoint_prior_scale,
                   seasonality_prior_scale=seasonality_prior_scale,
@@ -193,6 +199,33 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     #Collect error - add ability to collect the average error across all horizons, then get the average error among all cryptos, if the error is below the average then buy crypto (it will be another condition)
     future = final.make_future_dataframe(periods=per_for, freq='D') #predict next 30 days
     forecast = final.predict(future)
+    future_close = []
+    iter_ = 0
+    for yhat in forecast['yhat'].iloc[-14:]:
+        if iter_ == 0:
+            temp = data['Close'].iloc[-1] + (data['Close'].iloc[-1] * yhat)
+            future_close.append(temp)
+        else:
+            temp = future_close[-1] + (future_close[-1] * yhat) 
+            future_close.append(temp)
+    plt.figure()
+    plt.plot(data.index[-20:],data['Close'].iloc[-20:],'k')
+    plt.plot(forecast.ds[-14:],future_close,'r')
+    plt.ylabel('USD')
+    plt.xlabel('Date')
+    plt.title(crypt)
+    direct = os.getcwd()
+    name = crypt + '_price_prediction.png'
+    direct = os.getcwd()
+    check_folder = os.path.join(direct,'forecast_ML',crypt)
+    if os.path.exists(check_folder):
+        final_dir = os.path.join(check_folder, name)
+    else:
+        os.mkdir(check_folder)
+        final_dir = os.path.join(check_folder, name)
+    plt.tight_layout()
+    plt.savefig(final_dir,dpi=300)
+    plt.close()
     #plot the whole figure
     fig2 = final.plot(forecast)
     plt.ylabel('Cumulative Log Returns') #'Cumulative percent change (1.0=100%)'
@@ -520,7 +553,7 @@ def main():
             else:
                 change, season, error, season_mode, holiday = model_tuning(df_data,crypt)
                 change, season, error, season_mode, holiday = read_params(final_dir)
-            forecast, cross_point_buy, cross_point_sell, reg_coef, error = model(df_data, 31, crypt, error, change, season, season_mode, holiday)
+            forecast, cross_point_buy, cross_point_sell, reg_coef, error = model(df_data, 14, crypt, error, change, season, season_mode, holiday,data)
             #Regress predictions
             if reg_coef > 0 and error < 50:
                 # if cross_point == True:# and below_zero == True:
