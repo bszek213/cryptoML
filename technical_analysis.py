@@ -313,7 +313,7 @@ class technical():
             self.data['MFI'].iloc[diff_length] = inst
             diff_length += 1
         self.q75_mfi, self.q25_mfi = percentile(self.data['MFI'].dropna().values, [75 ,25])
-        self.data['MFI'] = self.data['MFI'].rolling(4).mean()
+        self.data['MFI'] = self.data['MFI'].rolling(3).mean()
     def volatility(self):
         self.data['log_return'] = log(self.data['close']/self.data['close'].shift())
         self.volatility_value = self.data['log_return'].std()*len(self.data)**0.5 #365 days of trading square root
@@ -540,6 +540,7 @@ class technical():
                     exit_while = True
                     while exit_while:
                         if (
+                            #TODO: maybe change the below to (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) and (self.data['RSI'].iloc[o] < self.q25)
                             (self.data['MFI'].iloc[o-1] < self.data['MFI'].iloc[o]) and
                             (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o])
                             ):
