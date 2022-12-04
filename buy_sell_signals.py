@@ -413,7 +413,7 @@ def main():
         while open_pos == False:
             balance = krak.get_account_balance()
             target_gain = float(args.value) + (float(args.value) * 0.007)
-            target_loss = 0 #change this value when you want
+            target_loss = float(args.value) - (float(args.value) * 0.01) #change this value when you want
             open_pos, _, _ = target_sell_hft(target_gain, args.crypto, krak, volume_inst, balance, target_loss)
             print(f'open_pos: {open_pos}')
             sleep(5)

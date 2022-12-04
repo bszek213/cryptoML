@@ -3,6 +3,7 @@
 """
 Ensemble time series forecasters
 @author: brianszekely
+Run analysis on these cryptos: BTC, ETH, DOGE, LTC, TRON, LINK, BCH, MANA, RLC
 """
 from ml_with_yfinance import set_crypt_names, set_data, convert_to_panda
 from statsmodels.tsa.stattools import adfuller
