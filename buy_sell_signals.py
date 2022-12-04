@@ -416,6 +416,6 @@ def main():
             target_loss = float(args.value) - (float(args.value) * 0.01) #change this value when you want
             open_pos, _, _ = target_sell_hft(target_gain, args.crypto, krak, volume_inst, balance, target_loss)
             print(f'open_pos: {open_pos}')
-            sleep(5)
+            sleep(60)
 if __name__ == "__main__":
     main()

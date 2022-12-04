@@ -726,7 +726,9 @@ class technical():
                     self.live_trading(name)
                     
                     print(f'cumulative gain {round(self.cumlative_gained,4)}% after running {name}')
+                    print('==================================================')
                     print(f'{closet_name} has the closest trade at {closet_buy} iterations or {closet_buy*SAMPLE_RATE} minutes or {(closet_buy*SAMPLE_RATE)/60} hours ago')
+                    print('==================================================')
                     save_hold_time_temp.append(self.save_time_hold)
                     save_hist.append(self.coef_variation)
                     sleep(1)
