@@ -10,7 +10,7 @@ limit to 5-10 trades a day
 from sklearn.linear_model import LinearRegression
 import krakenex
 from pykrakenapi import KrakenAPI
-from numpy import array, zeros, nan, arange, percentile, empty, log, mean, isnan, logical_not, full
+from numpy import array, zeros, nan, arange, percentile, empty, log, mean, isnan, logical_not, full, where
 from time import sleep
 # import argparse
 from os import getcwd, remove
@@ -542,7 +542,8 @@ class technical():
                         if (
                             #TODO: maybe change the below to (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) and (self.data['RSI'].iloc[o] < self.q25)
                             (self.data['MFI'].iloc[o-1] < self.data['MFI'].iloc[o]) and
-                            (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o])
+                            (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) and 
+                            (self.data['RSI'].iloc[o] < self.q25)
                             ):
                             self.buy_for_trading = o
                             self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
@@ -669,6 +670,8 @@ class technical():
         self.lb_coef_deter = -35
         self.ub_coef_deter = -8
         closet_buy = 720
+        closet_buy_list = []
+        closet_buy_list_name = []
         closet_name = '1Inch'
         if sys.argv[1] != 'all':
             print(f'Perform technical analysis on {sys.argv[1]}')
@@ -692,14 +695,18 @@ class technical():
             self.plot(sys.argv[1],check_latest_trade)
         else:
             while True:
-                pos_crypt = self.get_24_above_zero()
+                # pos_crypt = self.get_24_above_zero() #put this back in when you want a linearRegression
                 files = glob(join(getcwd(),'technical_analysis','*'))
                 for f in files:
                     remove(f)
                 save_hist = []
                 save_hold_time_temp = []
+                #create list of cryptos
+                self.readin_cryptos()
+                pos_crypt = self.crypto_list['crypto']
                 pos_crypt = sorted(pos_crypt)
                 for name in tqdm(pos_crypt):
+                    name = name + 'USD'
                     self.get_ohlc(name)
                     self.macd()
                     self.RSI()
@@ -718,9 +725,11 @@ class technical():
                     self.trade()
                     # if self.coef_variation != 'nan':
                     check_latest_trade = len(self.data) - self.buy_for_trading
-                    if check_latest_trade < closet_buy:
+                    if check_latest_trade <= closet_buy:
                         closet_buy = check_latest_trade
                         closet_name = name
+                        closet_buy_list.append(closet_buy)
+                        closet_buy_list_name.append(closet_name)
                     if (check_latest_trade < 100): #int(len(self.data)/1.5)
                         self.plot(name, check_latest_trade)
                     self.live_trading(name)
@@ -736,6 +745,15 @@ class technical():
                 # plt.hist(save_hist,bins=100)
                 # plt.show()
                 # print(save_hold_time_temp)
+                idx = where(array(closet_buy_list) == min(closet_buy_list))
+                idx_save = idx[0].tolist()
+                print(f'cryptos with minimum buy signals: {min(closet_buy_list)} of iterations')
+                for i in idx_save:
+                    print(closet_buy_list_name[i])
+                print('=========================================')
+                #Save cryptos to file
+                final_cryptos = DataFrame(list(zip(closet_buy_list_name,closet_buy_list)),columns=['crypto','iterations'])
+                final_cryptos.sort_values(by=['iterations']).to_csv('final_cryptos_buy.csv')
                 save_hist_no_nan = [x for x in save_hist if str(x) != 'nan']
                 coeff_var_75, coeff_var_25 = percentile(save_hist_no_nan, 
                                             [75 ,25])
