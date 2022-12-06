@@ -12,6 +12,7 @@ from os import getcwd
 from os.path import join
 from pandas import read_csv
 from time import sleep
+from datetime import datetime
 def readin_cryptos():
     direct = getcwd()
     location = join(direct, 'crypto_trade_min.csv')
@@ -416,6 +417,7 @@ def main():
             target_loss = float(args.value) - (float(args.value) * 0.01) #change this value when you want
             open_pos, _, _ = target_sell_hft(target_gain, args.crypto, krak, volume_inst, balance, target_loss)
             print(f'open_pos: {open_pos}')
+            print(f'sampled last at: {str(datetime.now())}')
             sleep(60)
 if __name__ == "__main__":
     main()
