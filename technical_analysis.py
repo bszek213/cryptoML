@@ -27,10 +27,10 @@ from tqdm import tqdm
 from glob import glob
 from psutil import virtual_memory
 import logging
-from scipy.stats import pearsonr
+# from scipy.stats import pearsonr
 import sys
-from datetime import datetime
-import mplfinance as mpf
+# from datetime import datetime
+# import mplfinance as mpf
 warnings.filterwarnings("ignore")
 """
 TODO: 
@@ -776,6 +776,7 @@ class technical():
                 print(f'Current sample rate: {SAMPLE_RATE}')
                 if virtual_memory()[2] > 95:
                     break
+                print(f'sampled last at: {str(datetime.now())}')
                 sleep(SAMPLE_RATE*60)
 def main():
     technical().run_analysis_pos_crypt()
