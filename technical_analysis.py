@@ -331,7 +331,7 @@ class technical():
         self.data.index = date_range(end=datetime.now(),periods=len(self.data.index),freq=time_increment)
         # xlim_val = [self.data.index[int((24*60)/SAMPLE_RATE)],self.data.index[-1]]
         x_low_lim = self.data.index[-int((self.obv_price_reg_sample*60)/SAMPLE_RATE)]
-        fig, ax = plt.subplots(6,1,figsize=(15, 20)) 
+        fig, ax = plt.subplots(7,1,figsize=(15, 20)) 
         buy_df = self.data[~self.data['buy'].isnull()]
         sell_df = self.data[~self.data['sell'].isnull()]
         #plot close price
@@ -450,6 +450,20 @@ class technical():
         ax[5].set_xlabel('Date')
         ax[5].set_ylabel('Money Flow Index')
         ax[5].grid(True)
+        # MACD
+        ax[6].plot(self.data.index, self.data['macd_diff'], 'tab:blue', marker="o",
+                        markersize=1, linestyle='-', label = 'MACD diff')
+        ax[6].plot(self.data.index, self.data['signal_line'], 'tab:red', marker="o",
+                        markersize=1, linestyle='-', label = 'Signal line')
+        ax[6].fill_between(self.data.index, self.q75_macd, self.q25_macd, color='green',
+                          alpha=0.2,label='IQR range MACD')
+        ax[6].scatter(buy_df.index, buy_df['macd_diff'], marker='o', s=120, color = 'g', label = 'buy')
+        ax[6].scatter(sell_df.index, sell_df['signal_line'], marker='o', s=120, color = 'r', label = 'sell')
+        ax[6].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
+        ax[6].legend()
+        ax[6].set_xlabel('Date')
+        ax[6].set_ylabel('MACD')
+        ax[6].grid(True)
         # #PLOT MACD OR AWESCOME INDICATOR
         # ax[5].plot(self.data.index, self.data['ao'],'tab:blue', marker="o",
         #                 markersize=1, linestyle='-', label = 'AO indicator')
@@ -544,6 +558,8 @@ class technical():
                             (self.data['MFI'].iloc[o-1] < self.data['MFI'].iloc[o]) and
                             (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) and 
                             (self.data['RSI'].iloc[o] < self.q25)
+                            #and (self.data['macd_diff'].iloc[o] < self.data['signal_line'].iloc[o]) and
+                            # ((self.data['macd_diff'].iloc[o] >= (self.data['macd_diff'].iloc[o-1])
                             ):
                             self.buy_for_trading = o
                             self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
