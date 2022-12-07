@@ -17,7 +17,7 @@ from os import getcwd, remove
 from pandas import DataFrame, read_csv, date_range
 # from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
-from os.path import join
+from os.path import join, exists
 import warnings
 from buy_sell_signals import buy_signal_hft,basic_sell
 # from datetime import datetime, timedelta
@@ -557,9 +557,11 @@ class technical():
                             #TODO: maybe change the below to (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) and (self.data['RSI'].iloc[o] < self.q25)
                             (self.data['MFI'].iloc[o-1] < self.data['MFI'].iloc[o]) and
                             (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) and 
-                            (self.data['RSI'].iloc[o] < self.q25)
-                            #and (self.data['macd_diff'].iloc[o] < self.data['signal_line'].iloc[o]) and
-                            # ((self.data['macd_diff'].iloc[o] >= (self.data['macd_diff'].iloc[o-1])
+                            (self.data['RSI'].iloc[o] < self.q25) and
+                            (self.data['MFI'].iloc[o] < self.q25_mfi) and
+                            (self.data['macd_diff'].iloc[o] < self.data['signal_line'].iloc[o]) and
+                            (self.data['macd_diff'].iloc[o] >= self.data['macd_diff'].iloc[o-1]) and
+                            (self.data['macd_diff'].iloc[o] <= self.q25_macd)
                             ):
                             self.buy_for_trading = o
                             self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
@@ -580,8 +582,11 @@ class technical():
                 count_hold_iter +=1
             #TODO change the sell condition to zero crossing of the Awe ind
             if (open_trade == False):
-                if ((self.data['close'].iloc[o] > thresh_buy) or 
-                    (self.data['close'].iloc[o] < thresh_sell)):
+                if (#(self.data['close'].iloc[o] > thresh_buy) or 
+                    #(self.data['close'].iloc[o] < thresh_sell)):
+                    (self.data['RSI'].iloc[o] >= self.q75) and
+                    (self.data['MFI'].iloc[o] >= self.q75_mfi)
+                    ):
                     sell = 'sell'
                 else:
                     sell ='dont'
@@ -601,7 +606,7 @@ class technical():
                 # (self.data['RSI'].iloc[o-1] ==  self.data['RSI'].iloc[o])
                 # 
                 ):
-                    # self.data['sell'].iloc[o] = self.data['close'].iloc[o]
+                    self.data['sell'].iloc[o] = self.data['close'].iloc[o]
                     simulate_fees_buy = buy_price * 0.0026
                     simulate_fees_sell = self.data['close'].iloc[o] * 0.0026
                     buy_plus_fees = buy_price + simulate_fees_buy +  simulate_fees_sell
@@ -768,6 +773,9 @@ class technical():
                     print(closet_buy_list_name[i])
                 print('=========================================')
                 #Save cryptos to file
+                path_to_file = join(getcwd(),'final_cryptos_buy.csv')
+                if exists(path_to_file):
+                    remove(path_to_file)
                 final_cryptos = DataFrame(list(zip(closet_buy_list_name,closet_buy_list)),columns=['crypto','iterations'])
                 final_cryptos.sort_values(by=['iterations']).to_csv('final_cryptos_buy.csv')
                 save_hist_no_nan = [x for x in save_hist if str(x) != 'nan']
@@ -793,6 +801,7 @@ class technical():
                 if virtual_memory()[2] > 95:
                     break
                 print(f'sampled last at: {str(datetime.now())}')
+                del final_cryptos
                 sleep(SAMPLE_RATE*60)
 def main():
     technical().run_analysis_pos_crypt()
