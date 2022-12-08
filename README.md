@@ -47,3 +47,14 @@ ETC bullish - inverted hammer  pattern
 ```
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+   crypto  reg_coef  MACD_cross_buy  MACD_cross_sell
+31    SOL  0.000447           False            False
+34   UNFI  0.000348           False            False
+37    XRP  0.000273           False            False
+28   ROOK  0.000247           False            False
+1    API3  0.000245           False            False
+10   ETHW  0.000240           False            False
+26   QTUM  0.000228           False            False
+21    MKR  0.000188           False            False
+14    GNO  0.000144           False            False
+36    XMR  0.000142           False            False

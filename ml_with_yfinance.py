@@ -534,6 +534,7 @@ def main():
     below_zero_list = []
     macd_sell = []
     for crypt in tqdm(names_crypt):
+        print(' ') #tqdm things
         print(crypt)
         while True:
             try:
