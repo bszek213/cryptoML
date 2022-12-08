@@ -208,11 +208,12 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
         else:
             temp = future_close[-1] + (future_close[-1] * yhat) 
             future_close.append(temp)
-    plt.figure()
+    plt.figure(figsize=[10,10])
     plt.plot(data.index[-20:],data['Close'].iloc[-20:],'k')
     plt.plot(forecast.ds[-14:],future_close,'r')
     plt.ylabel('USD')
     plt.xlabel('Date')
+    plt.grid(True)
     plt.title(crypt)
     direct = os.getcwd()
     name = crypt + '_price_prediction.png'

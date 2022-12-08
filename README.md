@@ -28,16 +28,16 @@ python candlestick.py
 ## Top 10 performing Cryptos
 ```bash
    crypto  reg_coef  MACD_cross_buy  MACD_cross_sell
-3    BOND  0.000376           False            False
-26    XRT  0.000235           False            False
-11   ETHW  0.000142           False            False
-17    LTC  0.000141           False            False
-19     MV  0.000088           False            False
-10    EOS  0.000079           False            False
-13   GLMR  0.000054           False            False
-2    BICO  0.000051           False            False
-16    LSK  0.000038           False            False
-18   MSOL  0.000037           False            False
+8     GALA  0.000776           False            False
+31    UNFI  0.000453           False            False
+34     XRP  0.000253           False            False
+29     SOL  0.000250           False            False
+7      FIS  0.000212           False            False
+24    QTUM  0.000187           False            False
+18     MKR  0.000167           False            False
+23  PSTAKE  0.000159           False            False
+32     WOO  0.000149           False            False
+5     ETHW  0.000140           False            False
 ```
 ## Candlestick Results
 run candlestick analysis before 5pm PDT, as the sample rates are on UTC time. The
