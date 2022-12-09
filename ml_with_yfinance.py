@@ -217,13 +217,22 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     plt.title(crypt)
     direct = os.getcwd()
     name = crypt + '_price_prediction.png'
+    future_name = crypt + '_future_price.csv'
     direct = os.getcwd()
     check_folder = os.path.join(direct,'forecast_ML',crypt)
     if os.path.exists(check_folder):
         final_dir = os.path.join(check_folder, name)
+        temp = forecast[['ds','yhat']].iloc[-14:]
+        temp['price_pred'] = future_close
+        temp.to_csv(os.path.join(check_folder, future_name))
+        # forecast[['ds','yhat']].iloc[-14:].to_csv(os.path.join(check_folder, future_name))
     else:
         os.mkdir(check_folder)
         final_dir = os.path.join(check_folder, name)
+        temp = forecast[['ds','yhat']].iloc[-14:]
+        temp['price_pred'] = future_close
+        temp.to_csv(os.path.join(check_folder, future_name))
+        # forecast[['ds','yhat']].iloc[-14:].to_csv(os.path.join(check_folder, future_name))
     plt.tight_layout()
     plt.savefig(final_dir,dpi=300)
     plt.close()
