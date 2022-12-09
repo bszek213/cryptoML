@@ -28,16 +28,16 @@ python candlestick.py
 ## Top 10 performing Cryptos
 ```bash
    crypto  reg_coef  MACD_cross_buy  MACD_cross_sell
-8     GALA  0.000776           False            False
-31    UNFI  0.000453           False            False
-34     XRP  0.000253           False            False
-29     SOL  0.000250           False            False
-7      FIS  0.000212           False            False
-24    QTUM  0.000187           False            False
-18     MKR  0.000167           False            False
-23  PSTAKE  0.000159           False            False
-32     WOO  0.000149           False            False
-5     ETHW  0.000140           False            False
+29   ROOK  0.000776           False            False
+32    SOL  0.000450           False            False
+39    XRP  0.000268           False            False
+36   UNFI  0.000255           False            False
+3    API3  0.000245           False            False
+11   ETHW  0.000240           False            False
+27   QTUM  0.000228           False            False
+22    MKR  0.000184           False            False
+15    GNO  0.000157           False            False
+12   FARM  0.000141           False            False
 ```
 ## Candlestick Results
 run candlestick analysis before 5pm PDT, as the sample rates are on UTC time. The
@@ -47,14 +47,4 @@ ETC bullish - inverted hammer  pattern
 ```
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-   crypto  reg_coef  MACD_cross_buy  MACD_cross_sell
-31    SOL  0.000447           False            False
-34   UNFI  0.000348           False            False
-37    XRP  0.000273           False            False
-28   ROOK  0.000247           False            False
-1    API3  0.000245           False            False
-10   ETHW  0.000240           False            False
-26   QTUM  0.000228           False            False
-21    MKR  0.000188           False            False
-14    GNO  0.000144           False            False
-36    XMR  0.000142           False            False
+
