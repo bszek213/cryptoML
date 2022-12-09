@@ -36,6 +36,9 @@ MANIFEST
 *.manifest
 *.spec
 
+#Python Files
+github.py
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt

@@ -10,14 +10,14 @@ limit to 5-10 trades a day
 from sklearn.linear_model import LinearRegression
 import krakenex
 from pykrakenapi import KrakenAPI
-from numpy import array, zeros, nan, arange, percentile, empty, log, mean, isnan, logical_not, full
+from numpy import array, zeros, nan, arange, percentile, empty, log, mean, isnan, logical_not, full, where
 from time import sleep
 # import argparse
 from os import getcwd, remove
 from pandas import DataFrame, read_csv, date_range
 # from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
-from os.path import join
+from os.path import join, exists
 import warnings
 from buy_sell_signals import buy_signal_hft,basic_sell
 # from datetime import datetime, timedelta
@@ -27,17 +27,17 @@ from tqdm import tqdm
 from glob import glob
 from psutil import virtual_memory
 import logging
-from scipy.stats import pearsonr
+# from scipy.stats import pearsonr
 import sys
-from datetime import datetime
-import mplfinance as mpf
+# from datetime import datetime
+# import mplfinance as mpf
 warnings.filterwarnings("ignore")
 """
 TODO: 
 -convert UTC to PST time
 -change the sell condition to be the crossover points of the MACD or zero crossing of the Awe ind
 """
-SAMPLE_RATE =  240 #keep at   1440
+SAMPLE_RATE = 240 #keep at 240
 logging.basicConfig(filename=join(getcwd(),'errors.log'), level=logging.DEBUG, 
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
 logger=logging.getLogger(__name__)
@@ -49,7 +49,7 @@ class technical():
         self.kraken = KrakenAPI(api)
         self.total_trades = 0
         self.cumlative_gained = float(0.0)
-        self.obv_price_reg_sample = 730
+        self.obv_price_reg_sample = 150 #iterations
     def readin_cryptos(self):
         direct = getcwd()
         location = join(direct, 'crypto_trade_min_kraken.csv')
@@ -158,20 +158,26 @@ class technical():
         a_list = list(arange(len(self.data)-data_len,len(self.data)))
         X1 = array(a_list)
         X = X1.reshape(-1, 1)
-        reg = LinearRegression().fit(X, self.data['OBV'].iloc[-data_len-1:-1].values)
-    
-        #create an array  of linear regression - short 
-        X1_half = arange(len(self.data)-data_len,len(self.data))
-        reg_arr_half = zeros(len(self.data))
-        for i in X1_half:
-            reg_arr_half[i] = (reg.coef_ * i) + reg.intercept_
-        self.reg_obv = [nan if x == 0 else x for x in reg_arr_half]
-        self.obv_reg = reg
-        # rval_reg =  reg_arr_half[reg_arr_half != 0]
-        # rval, pval = pearsonr(rval_reg, self.data['close'].iloc[-data_len-1:-1].values)
+
+        try:
+            reg = LinearRegression().fit(X, self.data['OBV'].iloc[-data_len-1:-1].values)
         
-        #calc OBV bounds 
-        self.q75_OBV, self.q25_OBV = percentile(self.data['OBV'].dropna().values, [75 ,25])
+            #create an array  of linear regression - short 
+            X1_half = arange(len(self.data)-data_len,len(self.data))
+            reg_arr_half = zeros(len(self.data))
+            for i in X1_half:
+                reg_arr_half[i] = (reg.coef_ * i) + reg.intercept_
+            self.reg_obv = [nan if x == 0 else x for x in reg_arr_half]
+            self.obv_reg = reg
+            # rval_reg =  reg_arr_half[reg_arr_half != 0]
+            # rval, pval = pearsonr(rval_reg, self.data['close'].iloc[-data_len-1:-1].values)
+            
+            #calc OBV bounds 
+            self.q75_OBV, self.q25_OBV = percentile(self.data['OBV'].dropna().values, [75 ,25])
+        except:
+            print('Could not calculate OBV linear regression')
+            self.reg_obv = full([1, len(X)], nan)
+            self.obv_reg = nan
 
     def awesome_indicator(self):
         self.data['median_price'] = (self.data['high'] + self.data['low']) / 2
@@ -307,7 +313,7 @@ class technical():
             self.data['MFI'].iloc[diff_length] = inst
             diff_length += 1
         self.q75_mfi, self.q25_mfi = percentile(self.data['MFI'].dropna().values, [75 ,25])
-        self.data['MFI'] = self.data['MFI'].rolling(4).mean()
+        self.data['MFI'] = self.data['MFI'].rolling(3).mean()
     def volatility(self):
         self.data['log_return'] = log(self.data['close']/self.data['close'].shift())
         self.volatility_value = self.data['log_return'].std()*len(self.data)**0.5 #365 days of trading square root
@@ -325,7 +331,7 @@ class technical():
         self.data.index = date_range(end=datetime.now(),periods=len(self.data.index),freq=time_increment)
         # xlim_val = [self.data.index[int((24*60)/SAMPLE_RATE)],self.data.index[-1]]
         x_low_lim = self.data.index[-int((self.obv_price_reg_sample*60)/SAMPLE_RATE)]
-        fig, ax = plt.subplots(6,1,figsize=(15, 20)) 
+        fig, ax = plt.subplots(7,1,figsize=(15, 20)) 
         buy_df = self.data[~self.data['buy'].isnull()]
         sell_df = self.data[~self.data['sell'].isnull()]
         #plot close price
@@ -370,8 +376,9 @@ class technical():
         #plot OBS
         ax[1].plot(self.data.index, self.data['OBV'], 'tab:blue', marker="o",
                         markersize=1, linestyle='-', label = 'OBV diff')
-        ax[1].plot(self.data.index, self.reg_obv, 'tab:red', marker="o",
-                        markersize=1, linestyle='-', label = 'obv_regression line')
+        if self.obv_reg != nan:
+            ax[1].plot(self.data.index, self.reg_obv, 'tab:red', marker="o",
+                            markersize=1, linestyle='-', label = 'obv_regression line')
         ax[1].fill_between(self.data.index, self.q75_OBV, self.q25_OBV, color='green',
                           alpha=0.2,label='IQR range OBV')
         ax[1].scatter(buy_df.index, buy_df['OBV'], marker='o', s=120, color = 'g', label = 'buy')
@@ -382,7 +389,10 @@ class technical():
         ax[1].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
         ax[1].legend()
         ax[1].grid(True)
-        title_obs = f'reg last {self.obv_price_reg_sample} hours OBV: {self.obv_reg.coef_[0]}'
+        if self.obv_reg == nan:
+            title_obs = 'could not calculate regression'
+        else:
+            title_obs = f'reg last {self.obv_price_reg_sample} hours OBV: {self.obv_reg.coef_[0]}'
         ax[1].set_title(title_obs)
         # ax[1].set_xlim(x_low_lim)
         ax[1].set_xlabel('Date')
@@ -440,6 +450,20 @@ class technical():
         ax[5].set_xlabel('Date')
         ax[5].set_ylabel('Money Flow Index')
         ax[5].grid(True)
+        # MACD
+        ax[6].plot(self.data.index, self.data['macd_diff'], 'tab:blue', marker="o",
+                        markersize=1, linestyle='-', label = 'MACD diff')
+        ax[6].plot(self.data.index, self.data['signal_line'], 'tab:red', marker="o",
+                        markersize=1, linestyle='-', label = 'Signal line')
+        ax[6].fill_between(self.data.index, self.q75_macd, self.q25_macd, color='green',
+                          alpha=0.2,label='IQR range MACD')
+        ax[6].scatter(buy_df.index, buy_df['macd_diff'], marker='o', s=120, color = 'g', label = 'buy')
+        ax[6].scatter(sell_df.index, sell_df['signal_line'], marker='o', s=120, color = 'r', label = 'sell')
+        ax[6].hlines(y = 0, xmin=self.data.index[0], xmax=self.data.index[-1])
+        ax[6].legend()
+        ax[6].set_xlabel('Date')
+        ax[6].set_ylabel('MACD')
+        ax[6].grid(True)
         # #PLOT MACD OR AWESCOME INDICATOR
         # ax[5].plot(self.data.index, self.data['ao'],'tab:blue', marker="o",
         #                 markersize=1, linestyle='-', label = 'AO indicator')
@@ -517,22 +541,36 @@ class technical():
                 # (self.data['RSI_vol'].iloc[o] >= self.q75_RSI_vol) and 
                 # (self.data['ao'].iloc[o] >= self.data['ao'].iloc[o-1])
                 #######################
-                (self.data['volume_os'].iloc[o] > self.q75_vol_os) and
-                (self.data['MFI'].iloc[o] < self.q25_mfi) and 
-                (self.data['RSI'].iloc[o] < self.q25) and 
-                (self.data['RSI_vol'].iloc[o] > self.q75_RSI_vol)
+                #FAVORITE STRATEGY THUS FAR
+                # (self.data['volume_os'].iloc[o] > self.q75_vol_os) and
+                # (self.data['MFI'].iloc[o] < self.q25_mfi) and 
+                # (self.data['RSI'].iloc[o] < self.q25) and 
+                # (self.data['RSI_vol'].iloc[o] > self.q75_RSI_vol)
+                #######################
+                (self.data['RSI'].iloc[o] < self.q25) and
+                (self.data['volume_os'].iloc[o] > 0) and
+                (self.data['MFI'].iloc[o] < self.q25_mfi)
                 ):
                     exit_while = True
                     while exit_while:
-                        if o >= len(self.data['MFI']):
-                            exit_while = False
-                        if ((self.data['MFI'].iloc[o-1] < self.data['MFI'].iloc[o]) and
-                            (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o])):
+                        if (
+                            #TODO: maybe change the below to (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) and (self.data['RSI'].iloc[o] < self.q25)
+                            (self.data['MFI'].iloc[o-1] < self.data['MFI'].iloc[o]) and
+                            (self.data['RSI'].iloc[o-1] < self.data['RSI'].iloc[o]) and 
+                            (self.data['RSI'].iloc[o] < self.q25) and
+                            (self.data['MFI'].iloc[o] < self.q25_mfi) and
+                            (self.data['macd_diff'].iloc[o] < self.data['signal_line'].iloc[o]) and
+                            (self.data['macd_diff'].iloc[o] >= self.data['macd_diff'].iloc[o-1]) and
+                            (self.data['macd_diff'].iloc[o] <= self.q25_macd)
+                            ):
                             self.buy_for_trading = o
                             self.data['buy_no_condition'].iloc[o] = self.data['close'].iloc[o]
                             exit_while = False
                         else:
                             o += 1
+                        if o >= len(self.data['MFI']):
+                            o = len(self.data['MFI'])-1
+                            exit_while = False
                     if open_trade == True:
                         self.data['buy'].iloc[o] = self.data['close'].iloc[o]
                         buy_price = self.data['close'].iloc[o]
@@ -544,8 +582,11 @@ class technical():
                 count_hold_iter +=1
             #TODO change the sell condition to zero crossing of the Awe ind
             if (open_trade == False):
-                if ((self.data['close'].iloc[o] > thresh_buy) or 
-                    (self.data['close'].iloc[o] < thresh_sell)):
+                if (#(self.data['close'].iloc[o] > thresh_buy) or 
+                    #(self.data['close'].iloc[o] < thresh_sell)):
+                    (self.data['RSI'].iloc[o] >= self.q75) and
+                    (self.data['MFI'].iloc[o] >= self.q75_mfi)
+                    ):
                     sell = 'sell'
                 else:
                     sell ='dont'
@@ -565,7 +606,7 @@ class technical():
                 # (self.data['RSI'].iloc[o-1] ==  self.data['RSI'].iloc[o])
                 # 
                 ):
-                    # self.data['sell'].iloc[o] = self.data['close'].iloc[o]
+                    self.data['sell'].iloc[o] = self.data['close'].iloc[o]
                     simulate_fees_buy = buy_price * 0.0026
                     simulate_fees_sell = self.data['close'].iloc[o] * 0.0026
                     buy_plus_fees = buy_price + simulate_fees_buy +  simulate_fees_sell
@@ -650,6 +691,8 @@ class technical():
         self.lb_coef_deter = -35
         self.ub_coef_deter = -8
         closet_buy = 720
+        closet_buy_list = []
+        closet_buy_list_name = []
         closet_name = '1Inch'
         if sys.argv[1] != 'all':
             print(f'Perform technical analysis on {sys.argv[1]}')
@@ -673,14 +716,18 @@ class technical():
             self.plot(sys.argv[1],check_latest_trade)
         else:
             while True:
-                pos_crypt = self.get_24_above_zero()
+                # pos_crypt = self.get_24_above_zero() #put this back in when you want a linearRegression
                 files = glob(join(getcwd(),'technical_analysis','*'))
                 for f in files:
                     remove(f)
                 save_hist = []
                 save_hold_time_temp = []
+                #create list of cryptos
+                self.readin_cryptos()
+                pos_crypt = self.crypto_list['crypto']
                 pos_crypt = sorted(pos_crypt)
                 for name in tqdm(pos_crypt):
+                    name = name + 'USD'
                     self.get_ohlc(name)
                     self.macd()
                     self.RSI()
@@ -699,15 +746,19 @@ class technical():
                     self.trade()
                     # if self.coef_variation != 'nan':
                     check_latest_trade = len(self.data) - self.buy_for_trading
-                    if check_latest_trade < closet_buy:
+                    if check_latest_trade <= closet_buy:
                         closet_buy = check_latest_trade
                         closet_name = name
+                        closet_buy_list.append(closet_buy)
+                        closet_buy_list_name.append(closet_name)
                     if (check_latest_trade < 100): #int(len(self.data)/1.5)
                         self.plot(name, check_latest_trade)
                     self.live_trading(name)
                     
                     print(f'cumulative gain {round(self.cumlative_gained,4)}% after running {name}')
+                    print('==================================================')
                     print(f'{closet_name} has the closest trade at {closet_buy} iterations or {closet_buy*SAMPLE_RATE} minutes or {(closet_buy*SAMPLE_RATE)/60} hours ago')
+                    print('==================================================')
                     save_hold_time_temp.append(self.save_time_hold)
                     save_hist.append(self.coef_variation)
                     sleep(1)
@@ -715,6 +766,18 @@ class technical():
                 # plt.hist(save_hist,bins=100)
                 # plt.show()
                 # print(save_hold_time_temp)
+                idx = where(array(closet_buy_list) == min(closet_buy_list))
+                idx_save = idx[0].tolist()
+                print(f'cryptos with minimum buy signals: {min(closet_buy_list)} of iterations')
+                for i in idx_save:
+                    print(closet_buy_list_name[i])
+                print('=========================================')
+                #Save cryptos to file
+                path_to_file = join(getcwd(),'final_cryptos_buy.csv')
+                if exists(path_to_file):
+                    remove(path_to_file)
+                final_cryptos = DataFrame(list(zip(closet_buy_list_name,closet_buy_list)),columns=['crypto','iterations'])
+                final_cryptos.sort_values(by=['iterations']).to_csv('final_cryptos_buy.csv')
                 save_hist_no_nan = [x for x in save_hist if str(x) != 'nan']
                 coeff_var_75, coeff_var_25 = percentile(save_hist_no_nan, 
                                             [75 ,25])
@@ -737,6 +800,8 @@ class technical():
                 print(f'Current sample rate: {SAMPLE_RATE}')
                 if virtual_memory()[2] > 95:
                     break
+                print(f'sampled last at: {str(datetime.now())}')
+                del final_cryptos
                 sleep(SAMPLE_RATE*60)
 def main():
     technical().run_analysis_pos_crypt()

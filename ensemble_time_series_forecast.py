@@ -3,6 +3,7 @@
 """
 Ensemble time series forecasters
 @author: brianszekely
+Run analysis on these cryptos: BTC, ETH, DOGE, LTC, TRON, LINK, BCH, MANA, RLC
 """
 from ml_with_yfinance import set_crypt_names, set_data, convert_to_panda
 from statsmodels.tsa.stattools import adfuller
@@ -19,6 +20,7 @@ from time import sleep
 from sklearn.metrics import mean_absolute_percentage_error
 from tqdm import tqdm
 from warnings import filterwarnings
+from prophet import Prophet
 class ensembleTS():
     def __init__(self):
         print('instantiate ensembleTS object')
@@ -89,11 +91,99 @@ class ensembleTS():
         stationary = adfuller(self.data['Close'].values)
         # plt.show()
         return stationary[1]
+    def convert_to_prophet(self):
+        cum_sum_close = self.data['Close'].cumsum()
+        cum_sum_close.dropna(inplace=True)
+        # df = DataFrame(list(zip(inst_data.Close,inst_data.index,inst_data.Volume,inst_data.Open,inst_data.Low,inst_data.High)),columns = ['y', 'ds','Volume','Open','Low','High'])
+        self.prophet_data = DataFrame(list(zip(cum_sum_close,self.data.index)),columns = ['y', 'ds'])
+    def model_tuning(self,df,crypt):
+        param_grid = {  
+        'changepoint_prior_scale': arange(0.0001, 0.015, 0.005),
+        'seasonality_prior_scale': arange(0.01, 10, 2),
+        'seasonality_mode': ['additive', 'multiplicative'],
+        'holidays_prior_scale': arange(0.01, 10, 2)
+        }
+        
+        # Generate all combinations of parameters
+        all_params = [dict(zip(param_grid.keys(), v)) for v in itertools.product(*param_grid.values())]
+        error_list = []  # Store the RMSEs for each params here
+        param_list = []
+        train = int(len(df) * 0.90)
+        test = int(len(df) * 0.10)
+        #plot trainig and test data
+        # plt.plot(df['ds'].iloc[0:train],df['y'].iloc[0:train],'r',label='training')
+        # plt.plot(df['ds'].iloc[-test:-1],df['y'].iloc[-test:-1],'b',label='test')
+        # plt_name = crypt +'_training_test_set'
+        # plt.title(plt_name)
+        # plt.xlabel('Dates')
+        # plt.ylabel('Prices')
+        # plt.legend()
+        # direct = os.getcwd()
+        # name = 'test_train_data_'+crypt + '.png'
+        # check_folder = os.path.join(direct,'forecast_ML',crypt)
+        # if os.path.exists(check_folder):
+        #     final_dir = os.path.join(check_folder, name)
+        # else:
+        #     os.mkdir(check_folder)
+        #     final_dir = os.path.join(check_folder, name)
+        # plt.savefig(final_dir,dpi=250)
+        # plt.close()
+        #hyperparameter tuning
+        #TODO: parallelize this better
+        # pool = mp.Pool(mp.cpu_count())
+        # results = [pool.apply(tuning,args=(df,train,test,params)) for params in tqdm(all_params)]
+        # error_list = results
+        # param_list = all_params
+        for params in tqdm(all_params): 
+            print('=================')
+            print(f'TUNING: {crypt}')
+            print('=================')
+            errorV = tuning(df,train,test,params) #Process(target=(tuning(df,train,test,params)))
+            error_list.append(errorV)
+            param_list.append(params)
+            del errorV
+        # for params in tqdm(all_params):
+        #     # with suppress_stdout_stderr():
+        #     m = Prophet(**params)
+        #     m.add_country_holidays(country_name='US')
+        #     m.fit(df.iloc[0:train])
+        #     forecast_test = m.predict(df.iloc[-test:-1])
+        #     mape_values = mean((abs(df['y'].iloc[-test:-1].values - forecast_test['yhat'].values) / df['y'].iloc[-test:-1].values) * 100)
+        #     error_list.append(mape_values)
+        #     param_list.append(params)
+            
+        tuning_results = DataFrame(param_list)
+        tuning_results['error'] = error_list
+        min_loc = tuning_results[['error']].idxmin()
+        change = tuning_results['changepoint_prior_scale'].iloc[min_loc]
+        season = tuning_results['seasonality_prior_scale'].iloc[min_loc]
+        error = tuning_results['error'].iloc[min_loc].values
+        season_mode = tuning_results['seasonality_mode'].iloc[min_loc].values
+        holiday = tuning_results['holidays_prior_scale'].iloc[min_loc]
+        tuning_results = tuning_results.sort_values(by=['error'])
+        #save tuning results
+        file_name = crypt +'_tuning_results.csv'
+        final_dir = os.path.join(check_folder,file_name)
+        tuning_results.to_csv(final_dir)
+    def tuning(self, df,train,test,params):
+        m = Prophet(**params)
+        m.add_country_holidays(country_name='US')
+        m.fit(df)
+        forecast_test = m.predict(df)
+        mape_values = abs(mean((abs(df['y'].values - forecast_test['yhat'].values)
+                            / df['y'].values) * 100))
+        # m.fit(df.iloc[0:train])
+        # forecast_test = m.predict(df.iloc[-test:-1]) #CHECK THIS I THINK ITS ALSO COMPARING THE FUTURE PREDICTIONS
+        # mape_values = mean((abs(df['y'].iloc[-test:-1].values - forecast_test['yhat'].values)
+        #                     / df['y'].iloc[-test:-1].values) * 100)
+        del m, forecast_test
+        return mape_values
     def run_object(self):
         self.get_data(sys.argv[1])
         self.transform()
-        self.tune_arima()
-        self.ARIMA_model()
+        self.convert_to_prophet()
+        # self.tune_arima()
+        # self.ARIMA_model()
 def main():
     ensembleTS().run_object()
 if __name__ == "__main__":

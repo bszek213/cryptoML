@@ -11,6 +11,8 @@ from pykrakenapi import KrakenAPI
 from os import getcwd
 from os.path import join
 from pandas import read_csv
+from time import sleep
+from datetime import datetime
 def readin_cryptos():
     direct = getcwd()
     location = join(direct, 'crypto_trade_min.csv')
@@ -391,6 +393,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("-c", "--crypto", help = "input the crypt to trade with USD.")
     parser.add_argument("-t", "--trade", help = "input what kind of trade buy or sell.")
+    parser.add_argument("-v", "--value", help = "what was the buy price?.")
     args = parser.parse_args()
     krak = kraken_info()
     name = args.crypto
@@ -398,11 +401,23 @@ def main():
     old_name = name.replace('USD','')
     ind_cryp_t = crypto_list[crypto_list['crypto'] == old_name]
     volume_inst = ind_cryp_t['Order'].values
+    #Manual buy - sell functions
     if args.trade == 'buy':
         balance = krak.get_account_balance()
         buy_signal_hft(args.crypto, krak, volume_inst, balance.vol['ZUSD'])
-    elif args.trade == 'sell':
+    if args.trade == 'sell':
         balance = krak.get_account_balance()
         basic_sell(args.crypto, krak, volume_inst, balance)
+    #Wait for price to hit a value
+    if args.value:
+        open_pos = False
+        while open_pos == False:
+            balance = krak.get_account_balance()
+            target_gain = float(args.value) + (float(args.value) * 0.007)
+            target_loss = float(args.value) - (float(args.value) * 0.01) #change this value when you want
+            open_pos, _, _ = target_sell_hft(target_gain, args.crypto, krak, volume_inst, balance, target_loss)
+            print(f'open_pos: {open_pos}')
+            print(f'sampled last at: {str(datetime.now())}')
+            sleep(60)
 if __name__ == "__main__":
     main()
