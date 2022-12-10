@@ -208,6 +208,7 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
         else:
             temp = future_close[-1] + (future_close[-1] * yhat) 
             future_close.append(temp)
+        iter_ += 1
     plt.figure(figsize=[10,10])
     plt.plot(data.index[-20:],data['Close'].iloc[-20:],'k')
     plt.plot(forecast.ds[-14:],future_close,'r')
@@ -397,7 +398,7 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     plt.savefig(final_dir,dpi=300)
     plt.close()
     # save_error = 0
-    return forecast, cross_point_buy, cross_point_sell, reg.coef_[0], mape_error
+    return forecast, cross_point_buy, cross_point_sell, sum(forecast['yhat'].iloc[-14:]), mape_error #reg.coef_[0]
 
 def model_tuning(df,crypt):
     param_grid = {  
@@ -565,7 +566,10 @@ def main():
                 change, season, error, season_mode, holiday = model_tuning(df_data,crypt)
                 change, season, error, season_mode, holiday = read_params(final_dir)
             forecast, cross_point_buy, cross_point_sell, reg_coef, error = model(df_data, 14, crypt, error, change, season, season_mode, holiday,data)
-            #Regress predictions
+            #Regress predictionsi
+            print('====================================')
+            print(f'{crypt} sum of yhat 14 days: {reg_coef}')
+            print('===================================')
             if reg_coef > 0 and error < 50:
                 # if cross_point == True:# and below_zero == True:
                 crypt_above_zero.append(crypt)
@@ -577,8 +581,8 @@ def main():
         except Exception as e:
                 print(f'{e}')
     pos_crypts = DataFrame(list(zip(crypt_above_zero,int_change,below_zero_list,macd_sell)),
-                           columns=['crypto','reg_coef','MACD_cross_buy','MACD_cross_sell'])
-    pos_crypts = pos_crypts.sort_values(by=['reg_coef'],ascending=False)
+                           columns=['crypto','yhat_sum','MACD_cross_buy','MACD_cross_sell']) #reg_coef
+    pos_crypts = pos_crypts.sort_values(by=['yhat_sum'],ascending=False) #reg_coef
     if os.path.exists(os.path.join(os.getcwd(),'save_pos_cryptos.csv')) == True:
         os.remove('save_pos_cryptos.csv')
     pos_crypts.to_csv('save_pos_cryptos.csv')

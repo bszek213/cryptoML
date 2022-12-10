@@ -27,17 +27,17 @@ python candlestick.py
 
 ## Top 10 performing Cryptos
 ```bash
-   crypto  reg_coef  MACD_cross_buy  MACD_cross_sell
-14   GALA  0.000664           False            False
-11   FARM  0.000317           False            False
-37   UNFI  0.000305           False            False
-40    XRP  0.000294           False            False
-38    WOO  0.000288           False            False
-29   QTUM  0.000267           False            False
-32   ROOK  0.000227           False            False
-25    MKR  0.000220           False            False
-3    AVAX  0.000217           False            False
-10   ETHW  0.000193           False            False
+   crypto  yhat_sum  MACD_cross_buy  MACD_cross_sell
+35   QTUM  0.277047           False            False
+36   RARE  0.254595           False            False
+47    XRP  0.204218           False            False
+11   BOND  0.171028           False            False
+19    GNO  0.152292           False            False
+0     ADX  0.149846           False            False
+14    CQT  0.142706           False            False
+28    MKR  0.122616           False            False
+46    XMR  0.122468           False            False
+26    LTC  0.120957           False            False
 ```
 ## Candlestick Results
 run candlestick analysis before 5pm PDT, as the sample rates are on UTC time. The
@@ -47,3 +47,4 @@ ETC bullish - inverted hammer  pattern
 ```
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
