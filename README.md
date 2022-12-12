@@ -13,7 +13,7 @@ conda env create -f crypto.yaml
 # Time Series Forecasting - cumulative log returns
 python ml_with_yfinance.py
 # Technical Analysis
-python technical_analysis.py BTCUSD or python technical_analysis.py
+python technical_analysis.py BTCUSD or python technical_analysis.py all
 # Candlestick Patterns
 python candlestick.py
 ```
@@ -28,16 +28,16 @@ python candlestick.py
 ## Top 10 performing Cryptos
 ```bash
    crypto  yhat_sum  MACD_cross_buy  MACD_cross_sell
-35   QTUM  0.277047           False            False
-36   RARE  0.254595           False            False
-47    XRP  0.204218           False            False
-11   BOND  0.171028           False            False
-19    GNO  0.152292           False            False
-0     ADX  0.149846           False            False
-14    CQT  0.142706           False            False
-28    MKR  0.122616           False            False
-46    XMR  0.122468           False            False
-26    LTC  0.120957           False            False
+37    REQ  0.848560           False            False
+35   QTUM  0.291086           False            False
+48    XRP  0.235073           False            False
+23    INJ  0.199043           False            False
+8     BCH  0.173572           False            False
+10   BOND  0.157031           False            False
+1     ADX  0.156830           False            False
+31    MKR  0.142337           False            False
+39   SAMO  0.133900           False            False
+21    GNO  0.133523           False            False
 ```
 ## Candlestick Results
 run candlestick analysis before 5pm PDT, as the sample rates are on UTC time. The
