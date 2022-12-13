@@ -18,7 +18,7 @@ from pandas import DataFrame, read_csv
 import yfinance as yf
 import itertools
 from timeit import default_timer
-from numpy import arange, mean, empty, nan, array, zeros, percentile, log
+from numpy import arange, mean, empty, nan, array, zeros, percentile, log, median
 from tqdm import tqdm
 # from multiprocessing import Process
 # import multiprocessing as mp
@@ -28,6 +28,7 @@ from time import sleep
 import krakenex
 from pykrakenapi import KrakenAPI
 from time import sleep
+from sklearn.metrics import mean_absolute_percentage_error
 """
 TODO
 1. ensemble modeling - add arima and other forecasters as a well of getting 
@@ -245,7 +246,8 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     kraken_data = stoch_RSI(kraken_data)
     #Calculate MAPE of predicted to actual
     forecast_test = final.predict(inst_data)
-    mape_error = abs(mean((abs(inst_data['y'].values - forecast_test['yhat'].values) / inst_data['y'].values) * 100))
+    mape_error = mean_absolute_percentage_error(inst_data['y'].values, forecast_test['yhat'].values) *100
+    # mape_error = abs(mean((abs(inst_data['y'].values - forecast_test['yhat'].values) / inst_data['y'].values) * 100))
     #check if macd is below the signal line
     # if inst_data['macd_diff'].iloc[-2] < inst_data['signal_line'].iloc[-2]:
     #     below_signal = True
@@ -526,8 +528,9 @@ def tuning(df,train,test,params):
     m.add_country_holidays(country_name='US')
     m.fit(df)
     forecast_test = m.predict(df)
-    mape_values = abs(mean((abs(df['y'].values - forecast_test['yhat'].values)
-                        / df['y'].values) * 100))
+    mape_values = mean_absolute_percentage_error(df['y'].values, forecast_test['yhat'].values) *100
+    # mape_values = abs(mean((abs(df['y'].values - forecast_test['yhat'].values)
+    #                     / df['y'].values) * 100))
     # m.fit(df.iloc[0:train])
     # forecast_test = m.predict(df.iloc[-test:-1]) #CHECK THIS I THINK ITS ALSO COMPARING THE FUTURE PREDICTIONS
     # mape_values = mean((abs(df['y'].iloc[-test:-1].values - forecast_test['yhat'].values)
@@ -543,6 +546,7 @@ def main():
     int_change = []
     below_zero_list = []
     macd_sell = []
+    error_avg = []
     for crypt in tqdm(names_crypt):
         print(' ') #tqdm things
         print(crypt)
@@ -566,11 +570,13 @@ def main():
                 change, season, error, season_mode, holiday = model_tuning(df_data,crypt)
                 change, season, error, season_mode, holiday = read_params(final_dir)
             forecast, cross_point_buy, cross_point_sell, reg_coef, error = model(df_data, 14, crypt, error, change, season, season_mode, holiday,data)
-            #Regress predictionsi
+            #Regress predictions
+            error_avg.append(error)
             print('====================================')
-            print(f'{crypt} sum of yhat 14 days: {reg_coef}')
+            print(f'{crypt} sum of yhat 14 days: {reg_coef} and MAPE; {error}')
+            print(f'Mean MAPE: {median(error_avg)}')
             print('===================================')
-            if reg_coef > 0 and error < 50:
+            if reg_coef > 0 and error <= median(error_avg):
                 # if cross_point == True:# and below_zero == True:
                 crypt_above_zero.append(crypt)
                 int_change.append(reg_coef)
