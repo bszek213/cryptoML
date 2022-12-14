@@ -37,7 +37,7 @@ TODO:
 -convert UTC to PST time
 -change the sell condition to be the crossover points of the MACD or zero crossing of the Awe ind
 """
-SAMPLE_RATE = 240 #keep at 240
+SAMPLE_RATE = 1440 #keep at 240
 logging.basicConfig(filename=join(getcwd(),'errors.log'), level=logging.DEBUG, 
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
 logger=logging.getLogger(__name__)
