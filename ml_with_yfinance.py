@@ -211,8 +211,8 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
             future_close.append(temp)
         iter_ += 1
     plt.figure(figsize=[10,10])
-    plt.plot(data.index[-20:],data['Close'].iloc[-20:],'k')
-    plt.plot(forecast.ds[-14:],future_close,'r')
+    plt.plot(data.index[-20:],data['Close'].iloc[-20:],color='k',marker="o",markersize=3)
+    plt.plot(forecast.ds[-14:],future_close,color='r',marker="o",markersize=3)
     plt.ylabel('USD')
     plt.xlabel('Date')
     plt.grid(True)
