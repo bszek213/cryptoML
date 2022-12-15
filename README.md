@@ -28,16 +28,16 @@ python candlestick.py
 ## Top 10 performing Cryptos
 ```bash
    crypto  yhat_sum  MACD_cross_buy  MACD_cross_sell
-37    SOL  0.281478           False            False
-42    WOO  0.264608           False            False
-30   RARE  0.172207           False            False
-36    SNX  0.129528           False            False
-8    BICO  0.129436           False            False
-33    REQ  0.098533           False            False
-25   MSOL  0.098461           False            False
-0     ACH  0.096372           False            False
-44    XMR  0.083277           False            False
-16    ENS  0.073642           False            False
+37    WOO  0.330807           False            False
+20    ICP  0.159149           False            False
+33    SOL  0.129524           False            False
+28   RARE  0.127118           False            False
+3    ALGO  0.124974           False            False
+6    ATOM  0.114917           False            False
+30    REQ  0.108873           False            False
+35      T  0.094538           False            False
+0     ACH  0.092719           False            False
+32    SNX  0.091575           False            False
 ```
 ## Candlestick Results
 run candlestick analysis before 5pm PDT, as the sample rates are on UTC time. The
