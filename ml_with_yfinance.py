@@ -203,7 +203,7 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     forecast = final.predict(future)
     future_close = []
     iter_ = 0
-    for yhat in forecast['yhat'].iloc[-14:]:
+    for yhat in forecast['yhat'].iloc[-per_for:]:
         if iter_ == 0:
             temp = data['Close'].iloc[-1] + (data['Close'].iloc[-1] * yhat)
             future_close.append(temp)
@@ -213,7 +213,7 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
         iter_ += 1
     plt.figure(figsize=[10,10])
     plt.plot(data.index[-20:],data['Close'].iloc[-20:],color='k',marker="o",markersize=3)
-    plt.plot(forecast.ds[-14:],future_close,color='r',marker="o",markersize=3)
+    plt.plot(forecast.ds[-per_for:],future_close,color='r',marker="o",markersize=3)
     plt.ylabel('USD')
     plt.xlabel('Date')
     plt.grid(True)
@@ -225,14 +225,14 @@ def model(inst_data, per_for, crypt, error, changepoint_prior_scale, seasonality
     check_folder = os.path.join(direct,'forecast_ML',crypt)
     if os.path.exists(check_folder):
         final_dir = os.path.join(check_folder, name)
-        temp = forecast[['ds','yhat']].iloc[-14:]
+        temp = forecast[['ds','yhat']].iloc[-per_for:]
         temp['price_pred'] = future_close
         temp.to_csv(os.path.join(check_folder, future_name))
         # forecast[['ds','yhat']].iloc[-14:].to_csv(os.path.join(check_folder, future_name))
     else:
         os.mkdir(check_folder)
         final_dir = os.path.join(check_folder, name)
-        temp = forecast[['ds','yhat']].iloc[-14:]
+        temp = forecast[['ds','yhat']].iloc[-per_for:]
         temp['price_pred'] = future_close
         temp.to_csv(os.path.join(check_folder, future_name))
         # forecast[['ds','yhat']].iloc[-14:].to_csv(os.path.join(check_folder, future_name))
