@@ -29,6 +29,7 @@ import krakenex
 from pykrakenapi import KrakenAPI
 from time import sleep
 from sklearn.metrics import mean_absolute_percentage_error
+import yaml
 """
 TODO
 1. ensemble modeling - add arima and other forecasters as a well of getting 
@@ -547,6 +548,14 @@ def main():
     below_zero_list = []
     macd_sell = []
     error_avg = []
+    final_dir = os.path.join(os.getcwd(), 'median_error.yaml')
+    isExists = os.path.exists(final_dir)
+    if isExists == True:
+        with open(final_dir) as file:
+            init_error = yaml.load(file, Loader=yaml.FullLoader)
+            print('read error from file')
+    else:
+        init_error = 0
     for crypt in tqdm(names_crypt):
         print(' ') #tqdm things
         print(crypt)
@@ -569,14 +578,15 @@ def main():
             else:
                 change, season, error, season_mode, holiday = model_tuning(df_data,crypt)
                 change, season, error, season_mode, holiday = read_params(final_dir)
-            forecast, cross_point_buy, cross_point_sell, reg_coef, error = model(df_data, 14, crypt, error, change, season, season_mode, holiday,data)
+            forecast, cross_point_buy, cross_point_sell, reg_coef, error = model(df_data, 5, crypt, error, change, season, season_mode, holiday,data)
             #Regress predictions
             error_avg.append(error)
             print('====================================')
             print(f'{crypt} sum of yhat 14 days: {reg_coef} and MAPE; {error}')
-            print(f'Mean MAPE: {median(error_avg)}')
+            print(f'Current Median MAPE: {median(error_avg)}')
+            print(f'Saved median MAPE error: {init_error}')
             print('===================================')
-            if reg_coef > 0 and error <= median(error_avg):
+            if reg_coef > 0 and error <= float(init_error):
                 # if cross_point == True:# and below_zero == True:
                 crypt_above_zero.append(crypt)
                 int_change.append(reg_coef)
@@ -596,6 +606,9 @@ def main():
     with open('README.md','a') as f:
         f.write(str(pos_crypts.head(10)))
         f.close()
+    with open(os.path.join(os.getcwd(),'median_error.yaml'), 'w') as write_file:
+        write_file.write(str(median(error_avg)))
+        print(f'writing {median(error_avg)} to yaml file')
     print(f'current crypto code took {default_timer() - start} seconds')
     # del pos_crypts, names_crypt, crypt_above_zero, int_change, below_zero_list, http, forecast
 if __name__ == "__main__":

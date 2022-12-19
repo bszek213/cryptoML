@@ -28,16 +28,16 @@ python candlestick.py
 ## Top 10 performing Cryptos
 ```bash
    crypto  yhat_sum  MACD_cross_buy  MACD_cross_sell
-41    WOO  0.270392           False            False
-2    ALGO  0.203717           False            False
-37    SOL  0.187695           False            False
-33   RARE  0.153312           False            False
-18  FORTH  0.105568           False            False
-19    ICP  0.098867           False            False
-5    ATOM  0.097012           False            False
-0     ACH  0.095352           False            False
-42    XMR  0.088953           False            False
-34    REQ  0.081795           False            False
+17  FORTH  0.144993           False            False
+28   RARE  0.140888           False            False
+37    WOO  0.125425           False            False
+32    SOL  0.121373           False            False
+5    ATOM  0.095684           False            False
+24   MSOL  0.088325           False            False
+34   TOKE  0.083227           False            False
+29    REQ  0.074029           False            False
+38    XMR  0.067982           False            False
+35  TRIBE  0.067520           False            False
 ```
 ## Candlestick Results
 run candlestick analysis before 5pm PDT, as the sample rates are on UTC time. The
@@ -47,4 +47,26 @@ ETC bullish - inverted hammer  pattern
 ```
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
+   crypto  yhat_sum  MACD_cross_buy  MACD_cross_sell
+17  FORTH  0.144993           False            False
+28   RARE  0.140888           False            False
+37    WOO  0.125425           False            False
+32    SOL  0.121373           False            False
+5    ATOM  0.095684           False            False
+24   MSOL  0.088325           False            False
+34   TOKE  0.083227           False            False
+29    REQ  0.074029           False            False
+38    XMR  0.067982           False            False
+35  TRIBE  0.067520           False            FalseEmpty DataFrame
+Columns: [crypto, yhat_sum, MACD_cross_buy, MACD_cross_sell]
+Index: []   crypto  yhat_sum  MACD_cross_buy  MACD_cross_sell
+17  FORTH  0.144993           False            False
+28   RARE  0.140888           False            False
+37    WOO  0.125425           False            False
+32    SOL  0.121373           False            False
+5    ATOM  0.095684           False            False
+24   MSOL  0.088325           False            False
+34   TOKE  0.083227           False            False
+29    REQ  0.074029           False            False
+38    XMR  0.067982           False            False
+35  TRIBE  0.067520           False            False
