@@ -13,7 +13,7 @@ from statsmodels.graphics.tsaplots import plot_predict
 from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.tsa.stattools import adfuller
 from prophet_forecast import set_data
-from numpy import log, exp
+from numpy import log, exp, nan
 import matplotlib.pyplot as plt
 from pandas import DataFrame
 from time import sleep
@@ -110,9 +110,16 @@ class ensembleTS():
                              order=(self.params_SARMA[0], 1, self.params_SARMA[1]), 
                              seasonal_order=(self.params_SARMA[2], 1, self.params_SARMA[3], 4)).fit(dis=-1)
         print(self.SARIMAX_model.summary())
-        plt.figure()
-        self.SARIMAX_model.plot_diagnostics(figsize=(15,12))
-        plt.show()
+        # plt.figure()
+        # self.SARIMAX_model.plot_diagnostics(figsize=(15,12))
+        # plt.show()
+        #Predict future
+        self.data['sarima_output'] = self.SARIMAX_model.fittedvalues
+        self.data['sarima_output']
+        self.data['sarima_output'][:4+1] = nan
+        print(self.data['sarima_output'])
+        forecast = self.SARIMAX_model.predict(start=self.data.shape[0], end=self.data.shape[0] + 8)
+        forecast = self.data['sarima_output'].append(forecast)
     def tune_SARIMA(self):
         """
         Tunes based on AIC values
