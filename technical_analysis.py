@@ -37,7 +37,7 @@ TODO:
 -convert UTC to PST time
 -change the sell condition to be the crossover points of the MACD or zero crossing of the Awe ind
 """
-SAMPLE_RATE = 1440 #keep at 240
+SAMPLE_RATE = 240 #keep at 240
 logging.basicConfig(filename=join(getcwd(),'errors.log'), level=logging.DEBUG, 
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
 logger=logging.getLogger(__name__)
@@ -622,9 +622,9 @@ class technical():
             #     open_trade = True
     def live_trading(self,name):
         trade_now = len(self.data) - self.buy_for_trading
-        print(' ') #tqdm things
+        print() #tqdm things
         print(f'{name} closet trade was {trade_now} iterations or {trade_now*SAMPLE_RATE} minutes or {(trade_now*SAMPLE_RATE)/60} hours ago')
-        if trade_now < 1:
+        if trade_now <= 1:
             try:
                 print(f'buy {name}')
                 #put a buy function here : ad save the thresh and time? 
