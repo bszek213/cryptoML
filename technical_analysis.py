@@ -768,6 +768,7 @@ class technical():
                 # print(save_hold_time_temp)
                 idx = where(array(closet_buy_list) == min(closet_buy_list))
                 idx_save = idx[0].tolist()
+                print('=========================================')
                 print(f'cryptos with minimum buy signals: {min(closet_buy_list)} of iterations')
                 for i in idx_save:
                     print(closet_buy_list_name[i])
